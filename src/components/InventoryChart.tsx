@@ -22,7 +22,7 @@ const data = [
 
 const AttendanceChart = () => {
   return (
-    <div className="bg-white rounded-xl p-4 dark:bg-gray-800">
+    <div className="bg-white rounded-xl p-4">
       <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">
         Daily Medicine Flow
       </h2>
