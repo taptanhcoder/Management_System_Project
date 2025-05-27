@@ -1,114 +1,70 @@
+import Image from "next/image";
+import Link from "next/link";
+
+type MenuProps = {
+  collapsed: boolean;
+};
+
 const menuItems = [
   {
-    title: "MENU",
+    title: "OVERVIEW",
     items: [
-      {
-        icon: "/home.png",
-        label: "Home",
-        href: "/",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/teacher.png",
-        label: "Teachers",
-        href: "/list/teachers",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/student.png",
-        label: "Students",
-        href: "/list/students",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/parent.png",
-        label: "Parents",
-        href: "/list/parents",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/subject.png",
-        label: "Subjects",
-        href: "/list/subjects",
-        visible: ["admin"],
-      },
-      {
-        icon: "/class.png",
-        label: "Classes",
-        href: "/list/classes",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/lesson.png",
-        label: "Lessons",
-        href: "/list/lessons",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/exam.png",
-        label: "Exams",
-        href: "/list/exams",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/assignment.png",
-        label: "Assignments",
-        href: "/list/assignments",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/result.png",
-        label: "Results",
-        href: "/list/results",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/attendance.png",
-        label: "Attendance",
-        href: "/list/attendance",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/calendar.png",
-        label: "Events",
-        href: "/list/events",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/message.png",
-        label: "Messages",
-        href: "/list/messages",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/announcement.png",
-        label: "Announcements",
-        href: "/list/announcements",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
+      { icon: "/dashboard.png", label: "Dashboard", href: "/dashboard/admin" },
+      { icon: "/prescription.png", label: "Prescriptions", href: "/prescriptions" },
     ],
   },
   {
-    title: "OTHER",
+    title: "INVENTORY",
     items: [
-      {
-        icon: "/profile.png",
-        label: "Profile",
-        href: "/profile",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/setting.png",
-        label: "Settings",
-        href: "/settings",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/logout.png",
-        label: "Logout",
-        href: "/logout",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
+      { icon: "/inventory.png", label: "Stock Overview", href: "/inventory" },
+      { icon: "/import.png", label: "Import Stock", href: "/inventory/import" },
+      { icon: "/export.png", label: "Export Stock", href: "/inventory/export" },
+      { icon: "/expiry.png", label: "Expiration Alerts", href: "/alerts" },
+      { icon: "/catalog.png", label: "Drug Catalog", href: "/catalog" },
+    ],
+  },
+  {
+    title: "PARTNERS",
+    items: [
+      { icon: "/supplier.png", label: "Suppliers", href: "/suppliers" },
+    ],
+  },
+  {
+    title: "ACCOUNT",
+    items: [
+      { icon: "/profile.png", label: "My Profile", href: "/profile" },
+      { icon: "/setting.png", label: "Settings", href: "/settings" },
+      { icon: "/logout.png", label: "Logout", href: "/logout" },
     ],
   },
 ];
+
+
+const Menu = ({ collapsed }: MenuProps) => {
+  return (
+    <nav className="flex flex-col gap-6 mt-6">
+      {menuItems.map((group) => (
+        <div key={group.title}>
+          {!collapsed && (
+            <h3 className="text-xs font-bold text-gray-500 mb-2 px-2 uppercase">{group.title}</h3>
+          )}
+          <ul className="flex flex-col gap-1">
+            {group.items.map((item) => (
+              <li key={item.label}>
+                <Link
+                  href={item.href}
+                  className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                >
+                  <Image src={item.icon} alt={item.label} width={20} height={20} />
+                  {!collapsed && <span className="text-sm">{item.label}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+};
+
+export default Menu;
