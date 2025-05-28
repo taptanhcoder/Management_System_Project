@@ -1,0 +1,185 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Enums
+enum UserRole {
+  doctor
+  patient
+  pharmacy
+  admin
+}
+
+enum PrescriptionStatus {
+  pending
+  approved
+  rejected
+  completed
+}
+
+enum OrderStatus {
+  pending
+  shipped
+  delivered
+}
+
+enum GenderEnum {
+  male
+  female
+  other
+}
+
+// Models
+model User {
+  user_id    Int       @id @default(autoincrement())
+  full_name  String
+  email      String    @unique
+  phone      String?
+  role       UserRole
+  password   String
+  created_at DateTime  @default(now())
+
+  doctor     Doctor?
+  patient    Patient?
+  pharmacy   Pharmacy?
+}
+
+model Doctor {
+  doctor_id      Int         @id @default(autoincrement())
+  user_id        Int         @unique
+  specialization String?
+  license_number String?     @unique
+
+  user           User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  prescriptions  Prescription[]
+}
+
+model Patient {
+  patient_id      Int           @id @default(autoincrement())
+  user_id         Int           @unique
+  date_of_birth   DateTime?
+  gender          GenderEnum?
+  medical_history String?
+
+  user            User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  prescriptions   Prescription[]
+  orders          Order[]
+}
+
+model Pharmacy {
+  pharmacy_id     Int         @id @default(autoincrement())
+  user_id         Int         @unique
+  address         String?
+  license_number  String?     @unique
+
+  user            User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  prescriptions   Prescription[]
+  orders          Order[]
+  inventory       Inventory[]
+}
+
+model Medicine {
+  medicine_id           Int                   @id @default(autoincrement())
+  name                  String
+  description           String?
+  price                 Decimal               @db.Decimal(12, 2)
+
+  batches               MedicineBatch[]
+  prescriptionDetails   PrescriptionDetail[]
+  orderDetails          OrderDetail[]
+}
+
+model MedicineBatch {
+  batch_id        Int               @id @default(autoincrement())
+  medicine_id     Int
+  batch_number    String
+  expiration_date DateTime
+  stock           Int               @default(0)
+
+  medicine        Medicine          @relation(fields: [medicine_id], references: [medicine_id], onDelete: Cascade)
+  inventory       Inventory[]
+
+  @@unique([medicine_id, batch_number])
+}
+
+model Prescription {
+  prescription_id  Int                  @id @default(autoincrement())
+  doctor_id        Int
+  patient_id       Int
+  pharmacy_id      Int?
+
+  created_at       DateTime             @default(now())
+  status           PrescriptionStatus   @default(pending)
+
+  doctor           Doctor     @relation(fields: [doctor_id], references: [doctor_id])
+  patient          Patient    @relation(fields: [patient_id], references: [patient_id])
+  pharmacy         Pharmacy?  @relation(fields: [pharmacy_id], references: [pharmacy_id])
+  details          PrescriptionDetail[]
+}
+
+model PrescriptionDetail {
+  prescription_detail_id  Int       @id @default(autoincrement())
+  prescription_id         Int
+  medicine_id             Int
+  dosage                  String?
+  instructions            String?
+  quantity                Int
+
+  prescription            Prescription @relation(fields: [prescription_id], references: [prescription_id], onDelete: Cascade)
+  medicine                Medicine     @relation(fields: [medicine_id], references: [medicine_id])
+}
+
+model Order {
+  order_id     Int         @id @default(autoincrement())
+  patient_id   Int
+  pharmacy_id  Int
+  total_price  Decimal     @db.Decimal(12, 2)
+  order_date   DateTime    @default(now())
+  status       OrderStatus @default(pending)
+
+  patient      Patient     @relation(fields: [patient_id], references: [patient_id])
+  pharmacy     Pharmacy    @relation(fields: [pharmacy_id], references: [pharmacy_id])
+  details      OrderDetail[]
+
+  @@map("Order")
+}
+
+model OrderDetail {
+  order_detail_id  Int       @id @default(autoincrement())
+  order_id         Int
+  medicine_id      Int
+  quantity         Int
+  price            Decimal   @db.Decimal(12, 2)
+
+  order    Order     @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  medicine Medicine  @relation(fields: [medicine_id], references: [medicine_id])
+}
+
+model Inventory {
+  inventory_id    Int             @id @default(autoincrement())
+  pharmacy_id     Int
+  batch_id        Int
+  stock_quantity  Int
+
+  pharmacy        Pharmacy        @relation(fields: [pharmacy_id], references: [pharmacy_id])
+  batch           MedicineBatch   @relation(fields: [batch_id], references: [batch_id])
+
+  @@unique([pharmacy_id, batch_id])
+}
+
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  table_name   String
+  operation    String
+  record_id    Int?
+  changed_data Json
+  changed_by   String
+  changed_at   DateTime @default(now())
+
+  @@map("audit_log")
+}

@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: dtnghia
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: nhathuoc
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtnghia -d nhathuoc"]
+      interval: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_CHECK_EMAIL_DELIVERABILITY: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "8080:80"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nextjs_app
+    restart: on-failure
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+    
+    # --- Chỉ mount prisma để đồng bộ migrations ---
+    volumes:
+      - ./prisma:/app/prisma
+      # Giữ nguyên node_modules trên container
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  pgadmin_data:
