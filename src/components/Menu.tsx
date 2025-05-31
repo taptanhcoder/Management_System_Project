@@ -47,7 +47,7 @@ const Menu = ({ collapsed }: MenuProps) => {
                 </Link>
               </li>
               <li>
-                <Link href="/prescriptions/new" className="text-sm text-gray-700 dark:text-gray-300 hover:underline">
+                <Link href="/dashboard/prescriptions/new" className="text-sm text-gray-700 dark:text-gray-300 hover:underline">
                   Add New Prescription
                 </Link>
               </li>
