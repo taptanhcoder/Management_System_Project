@@ -1,114 +1,237 @@
+// src/components/Menu.tsx
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import {
+  Home,
+  Box,
+  FileText,
+  Layers,
+  Users,
+  UserCircle2,
+  LogOut,
+} from "lucide-react";
 
 type MenuProps = {
   collapsed: boolean;
 };
 
 const Menu = ({ collapsed }: MenuProps) => {
-  const [isPrescriptionOpen, setIsPrescriptionOpen] = useState(false);
+  const [presOpen, setPresOpen] = useState(false);
 
   return (
-    <nav className="flex flex-col gap-6 mt-6">
+    <nav className="flex flex-col gap-4 mt-6">
       {/* OVERVIEW */}
       {!collapsed && (
-        <h3 className="text-xs font-bold text-gray-500 mb-2 px-2 uppercase">OVERVIEW</h3>
+        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 px-2 uppercase">
+          OVERVIEW
+        </h3>
       )}
       <ul className="flex flex-col gap-1">
         <li>
-          <Link href="/dashboard/admin" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-            <Image src="/dashboard.png" alt="Dashboard" width={20} height={20} />
-            {!collapsed && <span className="text-sm">Dashboard</span>}
-          </Link>
-        </li>
-
-        {/* PRESCRIPTIONS */}
-        <li>
-          <button
-            onClick={() => setIsPrescriptionOpen(!isPrescriptionOpen)}
-            className="flex items-center justify-between w-full px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          <Link
+            href="/dashboard/admin"
+            title="Dashboard Overview"
+            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
           >
-            <div className="flex items-center gap-3">
-              <Image src="/prescription.png" alt="Prescriptions" width={20} height={20} />
-              {!collapsed && <span className="text-sm">Prescriptions</span>}
-            </div>
-            {!collapsed && <span>{isPrescriptionOpen ? "▾" : "▸"}</span>}
-          </button>
-
-          {/* SUBMENU */}
-          {isPrescriptionOpen && !collapsed && (
-            <ul className="ml-10 mt-1 flex flex-col gap-1">
-              <li>
-                <Link href="/dashboard/prescriptions" className="text-sm text-gray-700 dark:text-gray-300 hover:underline">
-                  List of Prescriptions
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard/prescriptions/new" className="text-sm text-gray-700 dark:text-gray-300 hover:underline">
-                  Add New Prescription
-                </Link>
-              </li>
-            </ul>
-          )}
+            <Home size={20} className="text-gray-600 dark:text-gray-300" />
+            {!collapsed && (
+              <span className="text-sm text-gray-800 dark:text-gray-100">
+                Dashboard
+              </span>
+            )}
+          </Link>
         </li>
       </ul>
 
       {/* INVENTORY */}
       {!collapsed && (
-        <h3 className="text-xs font-bold text-gray-500 mb-2 px-2 uppercase">INVENTORY</h3>
+        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 px-2 uppercase">
+          INVENTORY
+        </h3>
       )}
       <ul className="flex flex-col gap-1">
         <li>
-          <Link href="/inventory" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-            <Image src="/inventory.png" alt="Stock Overview" width={20} height={20} />
-            {!collapsed && <span className="text-sm">Stock Overview</span>}
+          <Link
+            href="/dashboard/inventory"
+            title="Stock Overview"
+            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          >
+            <Box size={20} className="text-gray-600 dark:text-gray-300" />
+            {!collapsed && (
+              <span className="text-sm text-gray-800 dark:text-gray-100">
+                Inventory
+              </span>
+            )}
           </Link>
         </li>
         <li>
-          <Link href="/inventory/import" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-            <Image src="/import.png" alt="Import Stock" width={20} height={20} />
-            {!collapsed && <span className="text-sm">Import Stock</span>}
+          <Link
+            href="/dashboard/inventory/new"
+            title="Add New Drug"
+            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          >
+            <Layers size={20} className="text-gray-600 dark:text-gray-300" />
+            {!collapsed && (
+              <span className="text-sm text-gray-800 dark:text-gray-100">
+                Add New Drug
+              </span>
+            )}
           </Link>
         </li>
+      </ul>
+
+      {/* PRESCRIPTIONS */}
+      {!collapsed && (
+        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 px-2 uppercase">
+          PRESCRIPTIONS
+        </h3>
+      )}
+      <ul className="flex flex-col gap-1">
         <li>
-          <Link href="/alerts" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-            <Image src="/expiry.png" alt="Expiration Alerts" width={20} height={20} />
-            {!collapsed && <span className="text-sm">Expiration Alerts</span>}
+          <button
+            onClick={() => setPresOpen(!presOpen)}
+            title="Prescriptions"
+            className="flex items-center justify-between w-full px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          >
+            <div className="flex items-center gap-3">
+              <FileText size={20} className="text-gray-600 dark:text-gray-300" />
+              {!collapsed && (
+                <span className="text-sm text-gray-800 dark:text-gray-100">
+                  Prescriptions
+                </span>
+              )}
+            </div>
+            {!collapsed && (
+              <span className="text-gray-400">{presOpen ? "▾" : "▸"}</span>
+            )}
+          </button>
+        </li>
+        {presOpen && !collapsed && (
+          <ul className="ml-8 flex flex-col gap-1">
+            <li>
+              <Link
+                href="/dashboard/prescriptions"
+                className="text-sm text-gray-700 dark:text-gray-300 hover:underline"
+              >
+                List
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/dashboard/prescriptions/new"
+                className="text-sm text-gray-700 dark:text-gray-300 hover:underline"
+              >
+                New Prescription
+              </Link>
+            </li>
+          </ul>
+        )}
+      </ul>
+
+      {/* CATALOG */}
+      {!collapsed && (
+        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 px-2 uppercase">
+          CATALOG
+        </h3>
+      )}
+      <ul className="flex flex-col gap-1">
+        <li>
+          <Link
+            href="/dashboard/catalog"
+            title="Drug Categories"
+            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          >
+            <Layers size={20} className="text-gray-600 dark:text-gray-300" />
+            {!collapsed && (
+              <span className="text-sm text-gray-800 dark:text-gray-100">
+                Categories
+              </span>
+            )}
           </Link>
         </li>
+      </ul>
+
+      {/* CUSTOMERS */}
+      {!collapsed && (
+        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 px-2 uppercase">
+          CUSTOMERS
+        </h3>
+      )}
+      <ul className="flex flex-col gap-1">
         <li>
-          <Link href="/catalog" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-            <Image src="/catalog.png" alt="Drug Catalog" width={20} height={20} />
-            {!collapsed && <span className="text-sm">Drug Catalog</span>}
+          <Link
+            href="/dashboard/customers"
+            title="Customer List"
+            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          >
+            <Users size={20} className="text-gray-600 dark:text-gray-300" />
+            {!collapsed && (
+              <span className="text-sm text-gray-800 dark:text-gray-100">
+                Customers
+              </span>
+            )}
+          </Link>
+        </li>
+      </ul>
+
+      {/* INVOICES */}
+      {!collapsed && (
+        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 px-2 uppercase">
+          BILLING
+        </h3>
+      )}
+      <ul className="flex flex-col gap-1">
+        <li>
+          <Link
+            href="/dashboard/invoices"
+            title="Invoices"
+            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          >
+            {!collapsed && (
+              <span className="text-sm text-gray-800 dark:text-gray-100">
+                Invoices
+              </span>
+            )}
           </Link>
         </li>
       </ul>
 
       {/* ACCOUNT */}
       {!collapsed && (
-        <h3 className="text-xs font-bold text-gray-500 mb-2 px-2 uppercase">ACCOUNT</h3>
+        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 px-2 uppercase">
+          ACCOUNT
+        </h3>
       )}
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-1 mb-8">
         <li>
-          <Link href="/profile" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-            <Image src="/profile.png" alt="My Profile" width={20} height={20} />
-            {!collapsed && <span className="text-sm">My Profile</span>}
+          <Link
+            href="/dashboard/profile"
+            title="My Profile"
+            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          >
+            <UserCircle2 size={20} className="text-gray-600 dark:text-gray-300" />
+            {!collapsed && (
+              <span className="text-sm text-gray-800 dark:text-gray-100">
+                My Profile
+              </span>
+            )}
           </Link>
         </li>
         <li>
-          <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-            <Image src="/setting.png" alt="Settings" width={20} height={20} />
-            {!collapsed && <span className="text-sm">Settings</span>}
-          </Link>
-        </li>
-        <li>
-          <Link href="/logout" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-            <Image src="/logout.png" alt="Logout" width={20} height={20} />
-            {!collapsed && <span className="text-sm">Logout</span>}
-          </Link>
+          <button
+            onClick={() => {
+              // để logout, dùng useAuth().logout() trong Navbar
+            }}
+            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-100 dark:hover:bg-red-700 transition"
+            title="Logout"
+          >
+            <LogOut size={20} className="text-red-600 dark:text-red-400" />
+            {!collapsed && (
+              <span className="text-sm text-red-600">Logout</span>
+            )}
+          </button>
         </li>
       </ul>
     </nav>

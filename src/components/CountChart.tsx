@@ -1,4 +1,6 @@
+// src/components/CountChart.tsx
 "use client";
+
 import Image from "next/image";
 import {
   RadialBarChart,
@@ -6,68 +8,67 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const data = [
-  {
-    name: "Total",
-    count: 200,
-    fill: "#4F46E5", // tím đậm
-  },
-  {
-    name: "Expired",
-    count: 40,
-    fill: "#F87171", // đỏ nhẹ
-  },
-  {
-    name: "In Stock",
-    count: 160,
-    fill: "#34D399", // xanh lá
-  },
-];
+interface CountChartProps {
+  total: number;
+  expired: number;
+  inStock: number;
+  className?: string;
+}
 
-const CountChart = () => {
+const CountChart = ({ total, expired, inStock, className = "" }: CountChartProps) => {
+  // Calculate percentages
+  const inStockPercent = total > 0 ? Math.round((inStock / total) * 100) : 0;
+  const expiredPercent = total > 0 ? 100 - inStockPercent : 0;
+
+  const data = [
+    { name: "In Stock", count: inStock, fill: "#34D399" },   // green
+    { name: "Expired", count: expired, fill: "#F87171" },    // red
+  ];
+
   return (
-    <div className="bg-blue-200 dark:bg-blue-400 rounded-xl w-full h-full p-4 text-gray-900 dark:text-white">
-      {/* TITLE */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-lg font-semibold">Medicines Overview</h1>
+    <div
+      className={`bg-white dark:bg-gray-800 rounded-xl w-full h-full p-4 text-gray-900 dark:text-white shadow ${className}`}
+    >
+      {/* Title Bar */}
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-lg font-semibold">Medicines Overview</h2>
         <Image src="/moreDark.png" alt="More options" width={20} height={20} />
       </div>
 
-      {/* CHART */}
-      <div className="relative w-full h-[75%]">
+      {/* Radial Chart */}
+      <div className="relative w-full h-[60%]">
         <ResponsiveContainer>
           <RadialBarChart
             cx="50%"
             cy="50%"
             innerRadius="40%"
             outerRadius="100%"
-            barSize={32}
+            barSize={20}
             data={data}
           >
             <RadialBar background dataKey="count" />
           </RadialBarChart>
         </ResponsiveContainer>
-
         <Image
-          src="/medicineIcon.png" // Bạn có thể thay icon phù hợp
+          src="/medicineIcon.png"
           alt="Medicines Icon"
-          width={50}
-          height={50}
+          width={48}
+          height={48}
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
         />
       </div>
 
-      {/* BOTTOM LEGEND */}
-      <div className="flex justify-center gap-16 mt-4 text-gray-500 dark:text-gray-300">
+      {/* Legend */}
+      <div className="flex justify-around items-center mt-4 text-gray-600 dark:text-gray-300">
         <div className="flex flex-col items-center gap-1">
           <div className="w-5 h-5 rounded-full bg-[#34D399]" />
-          <h1 className="font-bold text-white">160</h1>
-          <h2 className="text-xs">In Stock (80%)</h2>
+          <p className="font-semibold text-gray-900 dark:text-white">{inStock}</p>
+          <p className="text-xs">In Stock ({inStockPercent}%)</p>
         </div>
         <div className="flex flex-col items-center gap-1">
           <div className="w-5 h-5 rounded-full bg-[#F87171]" />
-          <h1 className="font-bold text-white">40</h1>
-          <h2 className="text-xs">Expired (20%)</h2>
+          <p className="font-semibold text-gray-900 dark:text-white">{expired}</p>
+          <p className="text-xs">Expired ({expiredPercent}%)</p>
         </div>
       </div>
     </div>

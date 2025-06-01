@@ -1,24 +1,25 @@
-import type { Metadata } from "next";
+// src/app/layout.tsx
 import { Inter } from "next/font/google";
-import "./globals.css"; // import file css chứa tailwind và css custom
+import "./globals.css";
+import { AuthProvider } from "@/components/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { ReactNode } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "Management Dashboard",
-  description: "Management System",
-  viewport: "width=device-width, initial-scale=1",
-  icons: { icon: "/logo (2).png" },
+export const metadata = {
+  title: "PharmaOne Management System",
+  description: "Frontend for pharmacy management",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={`${inter.className} bg-gray-50 dark:bg-gray-900`}>
+        <AuthProvider>
+          <ProtectedRoute>{children}</ProtectedRoute>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

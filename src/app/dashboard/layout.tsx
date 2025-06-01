@@ -1,5 +1,4 @@
 // src/app/dashboard/layout.tsx
-
 "use client";
 
 import { useState, useEffect, ReactNode } from "react";
@@ -8,10 +7,12 @@ import Menu from "@/components/Menu";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 import Image from "next/image";
+import { useAuth } from "@/components/AuthContext";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const { logout, user } = useAuth();
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -24,22 +25,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         className={classNames(
           "transition-all duration-300 border-r shadow-md overflow-y-auto",
           darkMode ? "bg-gray-800 text-white" : "bg-white text-black",
-          collapsed ? "w-[60px]" : "w-[250px]"
+          collapsed ? "w-16" : "w-60"
         )}
       >
         <div className="p-4 flex flex-col items-center lg:items-start">
-          {/* Toggle + Dark Mode */}
-          <div className="flex items-center justify-between w-full mb-4">
+          {/* Collapse + Dark Mode Toggle */}
+          <div className="flex items-center justify-between w-full mb-6">
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="text-sm text-gray-500 hover:text-black dark:hover:text-white"
+              className="text-gray-500 hover:text-gray-900 dark:hover:text-white focus:outline-none"
             >
               {collapsed ? "▶" : "◀"}
             </button>
             {!collapsed && (
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className="text-sm text-gray-500 hover:text-black dark:hover:text-white ml-auto"
+                className="text-gray-500 hover:text-gray-900 dark:hover:text-white ml-auto focus:outline-none"
               >
                 {darkMode ? "🌙" : "☀️"}
               </button>
@@ -47,9 +48,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="logo" width={32} height={32} />
-            {!collapsed && <span className="hidden lg:block font-bold">Pharma One</span>}
+          <Link href="/dashboard/admin" legacyBehavior>
+            <a className="flex items-center gap-2 mb-8">
+              <Image src="/logo.png" alt="logo" width={32} height={32} />
+              {!collapsed && <span className="text-xl font-bold">PharmaOne</span>}
+            </a>
           </Link>
 
           {/* Menu */}
@@ -59,10 +62,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       {/* MAIN CONTENT */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <nav className="shadow-sm z-10">
-          <Navbar />
-        </nav>
-        <section className="flex-1 overflow-y-auto p-6 bg-[#f5f7fa] dark:bg-gray-900">
+        {/* Navbar */}
+        <Navbar onLogout={logout} userName={user?.email || "User"} />
+
+        {/* Content Area */}
+        <section className="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-900">
           {children}
         </section>
       </main>
