@@ -1,25 +1,22 @@
 // src/lib/prisma.ts
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 declare global {
-  // In development, use a global variable so we reuse the PrismaClient instance across module reloads
-  // In production, this variable will be undefined and PrismaClient will be instantiated once per process
+  // Trong môi trường dev, tránh tạo nhiều PrismaClient instance
+  // @ts-ignore
   var prisma: PrismaClient | undefined;
 }
 
-const prismaClient = global.prisma
-  ?? new PrismaClient({
-    log:
-      process.env.NODE_ENV === 'production'
-        ? ['warn', 'error']
-        : ['query', 'info', 'warn', 'error'],
+export const prisma: PrismaClient =
+  // Nếu global.prisma đã tồn tại (trong dev), tái sử dụng; ngược lại khởi tạo mới
+  // @ts-ignore
+  global.prisma ||
+  new PrismaClient({
+    log: ["query"], // nếu muốn in log các query ra console
   });
 
-// If not in production, save the instance to the global object
-// so that later imports reuse the same PrismaClient (avoiding too many connections)
-if (process.env.NODE_ENV !== 'production') {
-  global.prisma = prismaClient;
+if (process.env.NODE_ENV !== "production") {
+  // @ts-ignore
+  global.prisma = prisma;
 }
-
-export default prismaClient;
