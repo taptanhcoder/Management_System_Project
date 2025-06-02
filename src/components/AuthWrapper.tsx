@@ -1,19 +1,16 @@
-// src/components/AuthWrapper.tsx
 "use client";
 
 import { SessionProvider } from "next-auth/react";
 import { ReactNode } from "react";
-import ProtectedRoute from "./ProtectedRoute";
+import { AuthProvider } from "@/components/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
-type AuthWrapperProps = {
-  children: ReactNode;
-};
-
-export default function AuthWrapper({ children }: AuthWrapperProps) {
+export default function AuthWrapper({ children }: { children: ReactNode }) {
   return (
-    // SessionProvider phải nằm trong Client Component
     <SessionProvider>
-      <ProtectedRoute>{children}</ProtectedRoute>
+      <AuthProvider>
+        <ProtectedRoute>{children}</ProtectedRoute>
+      </AuthProvider>
     </SessionProvider>
   );
 }
