@@ -1,3 +1,4 @@
+
 import { ShieldCheck, DollarSign, Package, AlertTriangle } from "lucide-react";
 import DashboardCard from "@/components/DashboardCard";
 import InfoBlock from "@/components/InfoBlock";
@@ -36,7 +37,9 @@ const DashboardPage = () => {
 
   return (
     <div className="p-6 space-y-8 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+        Dashboard
+      </h1>
       <p className="text-gray-600 dark:text-gray-300">
         A quick data overview of the inventory.
       </p>

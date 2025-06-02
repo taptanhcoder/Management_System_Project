@@ -49,7 +49,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="logo" width={32} height={32} />
-            {!collapsed && <span className="hidden lg:block font-bold">Pharma One</span>}
+            {!collapsed && (
+              <span className="hidden lg:block font-bold">Pharma One</span>
+            )}
           </Link>
 
           {/* Menu */}

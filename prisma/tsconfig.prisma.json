@@ -3,7 +3,8 @@
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "node",
-    "noEmit": false
+    "esModuleInterop": true,
+    "resolveJsonModule": true
   },
   "include": ["./*.ts"]
 }
