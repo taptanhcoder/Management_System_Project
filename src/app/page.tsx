@@ -1,7 +1,22 @@
-const Homepage = () => {
-  return (
-    <div className=''>Homepage</div>
-  )
-}
+// src/app/page.tsx
+"use client";
 
-export default Homepage
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+export default function RootPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!session) {
+      router.replace("/auth/signin");
+    } else {
+      router.replace("/dashboard/admin");
+    }
+  }, [session, status, router]);
+
+  return <div>Loading...</div>;
+}

@@ -1,9 +1,8 @@
 // src/app/layout.tsx
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/components/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import { ReactNode } from "react";
+import AuthWrapper from "@/components/AuthWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,9 +15,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className={`${inter.className} bg-gray-50 dark:bg-gray-900`}>
-        <AuthProvider>
-          <ProtectedRoute>{children}</ProtectedRoute>
-        </AuthProvider>
+        {/* Bọc AuthWrapper (Client Component) */}
+        <AuthWrapper>{children}</AuthWrapper>
       </body>
     </html>
   );

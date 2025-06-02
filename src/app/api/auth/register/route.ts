@@ -16,31 +16,26 @@ export async function POST(request: Request) {
     const body = await request.json();
     const data = registerSchema.parse(body);
 
-    // Kiểm tra xem email đã tồn tại chưa
+    // Kiểm tra email đã tồn tại chưa
     const existing = await prisma.user.findUnique({
       where: { email: data.email },
     });
     if (existing) {
-      return NextResponse.json(
-        { error: "Email already registered" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Email đã được đăng ký" }, { status: 400 });
     }
 
-    // Hash password
+    // Hash password rồi lưu
     const passwordHash = await hash(data.password, 10);
-
-    // Tạo mới user
     const newUser = await prisma.user.create({
       data: {
         email: data.email,
         name: data.name,
         passwordHash,
-        role: "USER",
+        role: "USER",        // Mặc định USER
       },
     });
 
-    // Trả về thông tin user (không trả passwordHash)
+    // Trả về thông tin user (không bao gồm passwordHash)
     return NextResponse.json(
       { id: newUser.id, email: newUser.email, name: newUser.name },
       { status: 201 }
@@ -49,6 +44,6 @@ export async function POST(request: Request) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ errors: err.errors }, { status: 400 });
     }
-    return NextResponse.json({ error: "Cannot register user" }, { status: 500 });
+    return NextResponse.json({ error: "Không thể đăng ký user" }, { status: 500 });
   }
 }

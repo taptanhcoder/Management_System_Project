@@ -9,16 +9,20 @@ generator client {
   provider = "prisma-client-js"
 }
 
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
-  passwordHash  String
+  emailVerified DateTime?       // ← Thêm
+  image         String?         // ← Thêm
+  passwordHash  String           // ← Cần giữ nguyên
   name          String?
   role          Role      @default(USER)
-  prescriptions Prescription[]
-  invoices      Invoice[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  prescriptions Prescription[]
+  invoices      Invoice[]
 }
 
 enum Role {
