@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------- ENUMS --------------------
+enum gender_enum {
+  male
+  female
+  other
+}
+
+enum order_status {
+  pending
+  shipped
+  delivered
+}
+
+enum prescription_status {
+  pending
+  approved
+  rejected
+  completed
+}
+
+enum user_role {
+  doctor
+  patient
+  pharmacy
+  admin
+}
+
+// -------------------- MODELS --------------------
+
+// Người dùng
+model User {
+  user_id    Int       @id @default(autoincrement())
+  full_name  String    @db.VarChar(255)
+  email      String    @unique @db.VarChar(255)
+  phone      String?   @db.VarChar(20)
+  role       user_role
+  password   String
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+
+  doctor     Doctor?
+  patient    Patient?
+  pharmacy   Pharmacy?
+}
+
+// Bệnh nhân
+model Patient {
+  patient_id      Int            @id @default(autoincrement())
+  user_id         Int            @unique
+  date_of_birth   DateTime?      @db.Date
+  gender          gender_enum?
+  medical_history String?
+
+  orders          Order[]
+  prescriptions   Prescription[]
+  user            User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+// Bác sĩ
+model Doctor {
+  doctor_id      Int             @id @default(autoincrement())
+  user_id        Int             @unique
+  specialization String?         @db.VarChar(255)
+  license_number String?         @unique @db.VarChar(100)
+
+  prescriptions  Prescription[]
+  user           User            @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+// Nhà thuốc
+model Pharmacy {
+  pharmacy_id    Int             @id @default(autoincrement())
+  user_id        Int             @unique
+  address        String?
+  license_number String?         @unique @db.VarChar(100)
+
+  orders         Order[]
+  inventory      Inventory[]
+  prescriptions  Prescription[]
+  user           User            @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+// Đơn thuốc
+model Prescription {
+  prescription_id    Int                  @id @default(autoincrement())
+  doctor_id          Int
+  patient_id         Int
+  pharmacy_id        Int?
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  status             prescription_status? @default(pending)
+
+  doctor             Doctor               @relation(fields: [doctor_id], references: [doctor_id])
+  patient            Patient              @relation(fields: [patient_id], references: [patient_id])
+  pharmacy           Pharmacy?            @relation(fields: [pharmacy_id], references: [pharmacy_id])
+
+  details            PrescriptionDetail[]
+}
+
+// Chi tiết đơn thuốc
+model PrescriptionDetail {
+  prescription_detail_id Int          @id @default(autoincrement())
+  prescription_id        Int
+  medicine_id            Int
+  dosage                 String?      @db.VarChar(255)
+  instructions           String?
+  quantity               Int
+
+  medicine               Medicine     @relation(fields: [medicine_id], references: [medicine_id])
+  prescription           Prescription @relation(fields: [prescription_id], references: [prescription_id])
+}
+
+// Đơn đặt hàng
+model Order {
+  order_id    Int           @id @default(autoincrement())
+  patient_id  Int
+  pharmacy_id Int
+  total_price Decimal       @db.Decimal(12, 2)
+  order_date  DateTime?     @default(now()) @db.Timestamp(6)
+  status      order_status? @default(pending)
+
+  patient     Patient       @relation(fields: [patient_id], references: [patient_id])
+  pharmacy    Pharmacy      @relation(fields: [pharmacy_id], references: [pharmacy_id])
+
+  details     OrderDetail[]
+}
+
+// Chi tiết đơn hàng
+model OrderDetail {
+  order_detail_id Int      @id @default(autoincrement())
+  order_id        Int
+  medicine_id     Int
+  quantity        Int
+  price           Decimal  @db.Decimal(12, 2)
+
+  order           Order    @relation(fields: [order_id], references: [order_id])
+  medicine        Medicine @relation(fields: [medicine_id], references: [medicine_id])
+}
+
+// Thuốc
+model Medicine {
+  medicine_id        Int                  @id @default(autoincrement())
+  name               String               @db.VarChar(255)
+  description        String?
+  price              Decimal              @db.Decimal(12, 2)
+
+  batches            MedicineBatch[]
+  order_details      OrderDetail[]
+  prescription_items PrescriptionDetail[]
+}
+
+// Lô thuốc
+model MedicineBatch {
+  batch_id        Int         @id @default(autoincrement())
+  medicine_id     Int
+  batch_number    String      @db.VarChar(100)
+  expiration_date DateTime    @db.Date
+  stock           Int         @default(0)
+
+  medicine        Medicine    @relation(fields: [medicine_id], references: [medicine_id])
+  inventories     Inventory[]
+
+  @@unique([medicine_id, batch_number])
+}
+
+// Tồn kho
+model Inventory {
+  inventory_id   Int           @id @default(autoincrement())
+  pharmacy_id    Int
+  batch_id       Int
+  stock_quantity Int
+
+  pharmacy       Pharmacy      @relation(fields: [pharmacy_id], references: [pharmacy_id])
+  batch          MedicineBatch @relation(fields: [batch_id], references: [batch_id])
+
+  @@unique([pharmacy_id, batch_id])
+}
+
+// Nhật ký hệ thống
+model AuditLog {
+  id           Int       @id @default(autoincrement())
+  table_name   String    @db.VarChar(100)
+  operation    String    @db.VarChar(10)
+  record_id    Int?
+  changed_data Json
+  changed_by   String
+  changed_at   DateTime? @default(now()) @db.Timestamp(6)
+}
