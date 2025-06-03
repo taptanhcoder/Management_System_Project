@@ -1,12 +1,11 @@
 // src/app/api/invoices/route.ts
-
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const createInvoiceSchema = z.object({
   customerId: z.string(),
-  date: z.string(), // ISO date: "2025-06-01"
+  date: z.string(), // ISO date string: "2025-06-01"
   status: z.enum(["PAID", "UNPAID"]).optional(),
   items: z.array(
     z.object({
@@ -21,6 +20,11 @@ export async function GET() {
   try {
     const list = await prisma.invoice.findMany({
       orderBy: { createdAt: "desc" },
+      include: {
+        customer: {
+          select: { id: true, name: true },
+        },
+      },
     });
     return NextResponse.json(list);
   } catch (error) {

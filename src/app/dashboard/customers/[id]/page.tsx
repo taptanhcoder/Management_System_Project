@@ -1,10 +1,10 @@
 // src/app/dashboard/customers/[id]/page.tsx
 import CustomerDetail from "@/components/CustomerDetail";
 
-interface Params {
+interface PageProps {
   params: { id: string };
 }
 
-export default function CustomerDetailPage({ params }: Params) {
-  return <CustomerDetail id={params.id} />;
+export default function CustomerDetailPage({ params }: PageProps) {
+  return <CustomerDetail params={params} />;
 }

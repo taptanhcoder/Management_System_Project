@@ -1,10 +1,9 @@
-// src/app/api/customers/[id]/route.ts
-
+// src/app/api/customers/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-const updateCustomerSchema = z.object({
+const createCustomerSchema = z.object({
   name: z.string(),
   phone: z.string(),
   email: z.string().email(),
@@ -12,67 +11,33 @@ const updateCustomerSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function GET() {
   try {
-    const cus = await prisma.customer.findUnique({ where: { id } });
-    if (!cus) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    return NextResponse.json(cus);
+    const list = await prisma.customer.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(list);
   } catch (error) {
     return NextResponse.json(
-      { error: "Cannot fetch customer" },
+      { error: "Cannot fetch customers" },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function POST(request: Request) {
   try {
     const json = await request.json();
-    const data = updateCustomerSchema.parse(json);
+    const data = createCustomerSchema.parse(json);
 
-    const updated = await prisma.customer.update({
-      where: { id },
-      data: {
-        name: data.name,
-        phone: data.phone,
-        email: data.email,
-        address: data.address,
-        notes: data.notes,
-      },
-    });
-    return NextResponse.json(updated);
+    const newCus = await prisma.customer.create({ data });
+    return NextResponse.json(newCus, { status: 201 });
   } catch (err: any) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ errors: err.errors }, { status: 400 });
     }
     return NextResponse.json(
-      { error: "Cannot update customer" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
-  try {
-    await prisma.customer.delete({ where: { id } });
-    return NextResponse.json({ message: "Deleted" });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot delete customer" },
+      { error: "Cannot create customer" },
       { status: 500 }
     );
   }

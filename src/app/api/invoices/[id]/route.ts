@@ -1,16 +1,14 @@
-// src/app/api/invoices/[id]/route.ts
-
+// src/app/api/invoices/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-const updateInvoiceSchema = z.object({
+const createInvoiceSchema = z.object({
   customerId: z.string(),
-  date: z.string(),
+  date: z.string(), // ISO date string: "2025-06-01"
   status: z.enum(["PAID", "UNPAID"]).optional(),
   items: z.array(
     z.object({
-      id: z.string().optional(), // nếu edit item cũ
       drugId: z.string(),
       quantity: z.number().int().positive(),
       unitPrice: z.number().nonnegative(),
@@ -18,51 +16,40 @@ const updateInvoiceSchema = z.object({
   ),
 });
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function GET() {
   try {
-    const inv = await prisma.invoice.findUnique({
-      where: { id },
-      include: { items: true },
+    const list = await prisma.invoice.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        customer: {
+          select: { id: true, name: true },
+        },
+      },
     });
-    if (!inv) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    return NextResponse.json(inv);
+    return NextResponse.json(list);
   } catch (error) {
     return NextResponse.json(
-      { error: "Cannot fetch invoice" },
+      { error: "Cannot fetch invoices" },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function POST(request: Request) {
   try {
     const json = await request.json();
-    const data = updateInvoiceSchema.parse(json);
+    const data = createInvoiceSchema.parse(json);
 
     const total = data.items.reduce(
       (sum, it) => sum + it.quantity * it.unitPrice,
       0
     );
 
-    // Xóa hết item cũ
-    await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
-
-    const updated = await prisma.invoice.update({
-      where: { id },
+    const inv = await prisma.invoice.create({
       data: {
         customer: { connect: { id: data.customerId } },
         date: new Date(data.date),
-        status: data.status,
+        status: data.status || "UNPAID",
         total,
         items: {
           create: data.items.map((it) => ({
@@ -74,31 +61,13 @@ export async function PUT(
       },
       include: { items: true },
     });
-    return NextResponse.json(updated);
+    return NextResponse.json(inv, { status: 201 });
   } catch (err: any) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ errors: err.errors }, { status: 400 });
     }
     return NextResponse.json(
-      { error: "Cannot update invoice" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
-  try {
-    // Xóa item rồi xóa invoice
-    await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
-    await prisma.invoice.delete({ where: { id } });
-    return NextResponse.json({ message: "Deleted" });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot delete invoice" },
+      { error: "Cannot create invoice" },
       { status: 500 }
     );
   }
