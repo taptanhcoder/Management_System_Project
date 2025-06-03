@@ -3,199 +3,285 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import MedicineLineItem from "./MedicineLineItem"; // Đảm bảo đường dẫn chính xác
 
-interface PrescriptionFormProps {
-  id?: string;
-}
-
-interface Prescription {
+interface DrugOption {
   id: string;
-  customer: string;
-  date: string;
-  status: "Pending" | "Confirmed";
-  medicines: { name: string; quantity: number; price: number }[];
-  total: number;
+  name: string;
 }
 
-const PrescriptionForm = ({ id }: PrescriptionFormProps) => {
-  const [customer, setCustomer] = useState("");
-  const [date, setDate] = useState("");
-  const [status, setStatus] = useState<"Pending" | "Confirmed">("Pending");
-  const [medicineItems, setMedicineItems] = useState<
-    { name: string; quantity: number; price: number }[]
-  >([{ name: "", quantity: 1, price: 0 }]);
-  const [medicineOptions, setMedicineOptions] = useState<
-    { name: string; price: number }[]
-  >([]);
+interface MedicineLine {
+  drugId: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export default function PrescriptionForm() {
   const router = useRouter();
 
+  // ─── 1. State form chính ─────────────────────────────
+  const [customer, setCustomer] = useState("");
+  const [date, setDate] = useState("");
+  const [status, setStatus] = useState<"PENDING" | "CONFIRMED">("PENDING");
+
+  // Medicines (mảng dòng thuốc): mặc định 1 dòng rỗng
+  const [medicines, setMedicines] = useState<MedicineLine[]>([
+    { drugId: "", quantity: 1, unitPrice: 0 },
+  ]);
+
+  // ─── 2. State để load dropdown “Chọn thuốc” ─────────────
+  const [drugOptions, setDrugOptions] = useState<DrugOption[]>([]);
+
   useEffect(() => {
-    // TODO: fetch danh sách medicine từ API
-    const sampleOptions: { name: string; price: number }[] = [
-      { name: "Paracetamol 500mg", price: 5 },
-      { name: "Vitamin C 1000mg", price: 10 },
-      { name: "Ibuprofen 200mg", price: 4 },
-    ];
-    setMedicineOptions(sampleOptions);
-
-    if (id) {
-      // TODO: fetch prescription theo id
-      const mock: Prescription = {
-        id,
-        customer: "John Doe",
-        date: "2025-05-25",
-        status: "Pending",
-        medicines: [
-          { name: "Paracetamol 500mg", quantity: 10, price: 5 },
-          { name: "Vitamin C 1000mg", quantity: 5, price: 10 },
-        ],
-        total: 150,
-      };
-      setCustomer(mock.customer);
-      setDate(mock.date);
-      setStatus(mock.status);
-      setMedicineItems(mock.medicines);
+    // Fetch danh sách drug từ API
+    async function loadDrugs() {
+      try {
+        const res = await fetch("/api/inventory");
+        if (!res.ok) {
+          console.error("Failed to load drugs:", await res.text());
+          return;
+        }
+        const list = await res.json();
+        // Giả sử mỗi đối tượng trả về có { id, name }
+        const opts = list.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+        }));
+        setDrugOptions(opts);
+      } catch (err) {
+        console.error("Network error when loading drugs:", err);
+      }
     }
-  }, [id]);
+    loadDrugs();
+  }, []);
 
-  const handleItemChange = (
-    idx: number,
-    name: string,
-    quantity: number,
-    price: number
+  // ─── 3. Các hàm xử lý form ────────────────────────────
+  const updateMedicineLine = (
+    index: number,
+    field: "drugId" | "quantity" | "unitPrice",
+    value: string | number
   ) => {
-    const updated = [...medicineItems];
-    updated[idx] = { name, quantity, price };
-    setMedicineItems(updated);
+    setMedicines((prev) => {
+      const copy = [...prev];
+      if (field === "drugId") {
+        copy[index].drugId = value as string;
+      } else if (field === "quantity") {
+        copy[index].quantity = Number(value);
+      } else if (field === "unitPrice") {
+        copy[index].unitPrice = Number(value);
+      }
+      return copy;
+    });
   };
 
-  const handleRemoveItem = (idx: number) => {
-    setMedicineItems((prev) => prev.filter((_, i) => i !== idx));
+  const addMedicineRow = () => {
+    setMedicines((prev) => [
+      ...prev,
+      { drugId: "", quantity: 1, unitPrice: 0 },
+    ]);
   };
 
-  const addNewLineItem = () => {
-    setMedicineItems((prev) => [...prev, { name: "", quantity: 1, price: 0 }]);
+  const removeMedicineRow = (index: number) => {
+    setMedicines((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // ─── 4. Xử lý submit ───────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const total = medicineItems.reduce(
-      (sum, item) => sum + item.quantity * item.price,
-      0
-    );
-    const payload = { customer, date, status, medicines: medicineItems, total };
 
-    if (id) {
-      // TODO: PUT /api/prescriptions/{id}
-      alert(`Updated prescription ${id} (demo)`);
-    } else {
-      // TODO: POST /api/prescriptions
-      alert("Created new prescription (demo)");
+    // Validate cơ bản trước khi gửi
+    if (!customer.trim()) {
+      alert("Vui lòng nhập tên khách hàng.");
+      return;
     }
-    router.push("/dashboard/prescriptions");
+    if (!date) {
+      alert("Vui lòng chọn ngày.");
+      return;
+    }
+    // Mỗi dòng thuốc đều phải có drugId, quantity > 0, unitPrice >= 0
+    for (let i = 0; i < medicines.length; i++) {
+      const line = medicines[i];
+      if (!line.drugId) {
+        alert(`Dòng ${i + 1}: Vui lòng chọn thuốc.`);
+        return;
+      }
+      if (line.quantity <= 0) {
+        alert(`Dòng ${i + 1}: Số lượng phải lớn hơn 0.`);
+        return;
+      }
+      if (line.unitPrice < 0) {
+        alert(`Dòng ${i + 1}: Giá phải ≥ 0.`);
+        return;
+      }
+    }
+
+    // Chuẩn bị payload cho API
+    const payload = {
+      customer: customer.trim(),
+      date, // định dạng yyyy-MM-dd từ <input type="date">
+      status,
+      medicines: medicines.map((m) => ({
+        drugId: m.drugId,
+        quantity: m.quantity,
+        unitPrice: m.unitPrice,
+      })),
+    };
+
+    try {
+      const res = await fetch("/api/prescriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        // Nếu backend trả lỗi 400 (validate) hay 500 (server)
+        const err = await res.json();
+        console.error("Create prescription failed:", err);
+        // Bạn có thể show message chi tiết ra UI thay vì console.log
+        alert("Tạo đơn thuốc thất bại. Xem console để biết thêm chi tiết.");
+        return;
+      }
+
+      // Nếu thành công (201), điều hướng về trang list prescriptions:
+      router.push("/dashboard/prescriptions");
+    } catch (err) {
+      console.error("Network error:", err);
+      alert("Lỗi mạng. Vui lòng thử lại.");
+    }
   };
 
+  // ─── 5. JSX form ───────────────────────────────────────
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {id ? "Edit Prescription" : "New Prescription"}
-        </h1>
-      </div>
+    <div className="max-w-3xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">New Prescription</h1>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Customer */}
-          <div>
-            <label className="block text-gray-700 dark:text-gray-200 text-sm mb-1">
-              Customer
-            </label>
-            <input
-              type="text"
-              value={customer}
-              onChange={(e) => setCustomer(e.target.value)}
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 dark:bg-gray-600 text-gray-800 dark:text-white"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* ─ Customer ────────────────── */}
+        <div>
+          <label className="block mb-1 font-medium">Customer</label>
+          <input
+            type="text"
+            value={customer}
+            onChange={(e) => setCustomer(e.target.value)}
+            required
+            className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 dark:text-white"
+          />
+        </div>
 
-          {/* Date */}
-          <div>
-            <label className="block text-gray-700 dark:text-gray-200 text-sm mb-1">
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 dark:bg-gray-600 text-gray-800 dark:text-white"
-            />
-          </div>
+        {/* ─ Date ─────────────────────── */}
+        <div>
+          <label className="block mb-1 font-medium">Date</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+            className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 dark:text-white"
+          />
+        </div>
 
-          {/* Status */}
-          <div>
-            <label className="block text-gray-700 dark:text-gray-200 text-sm mb-1">
-              Status
-            </label>
-            <select
-              value={status}
-              onChange={(e) =>
-                setStatus(e.target.value as "Pending" | "Confirmed")
-              }
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 dark:bg-gray-600 text-gray-800 dark:text-white"
-            >
-              <option value="Pending">Pending</option>
-              <option value="Confirmed">Confirmed</option>
-            </select>
-          </div>
+        {/* ─ Status ───────────────────── */}
+        <div>
+          <label className="block mb-1 font-medium">Status</label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as any)}
+            className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 dark:text-white"
+          >
+            <option value="PENDING">Pending</option>
+            <option value="CONFIRMED">Confirmed</option>
+          </select>
+        </div>
 
-          {/* Medicines */}
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-              Medicines
-            </h2>
-            {medicineItems.map((item, idx) => (
-              <MedicineLineItem
-                key={idx}
-                index={idx}
-                items={medicineOptions}
-                defaultValue={item.name ? item : undefined}
-                onChange={handleItemChange}
-                onRemove={handleRemoveItem}
-              />
-            ))}
-            <button
-              type="button"
-              onClick={addNewLineItem}
-              className="text-blue-600 hover:underline text-sm"
-            >
-              + Add another medicine
-            </button>
-          </div>
+        {/* ─ Medicines (nhiều dòng) ─────────────────────────── */}
+        <div className="border-t pt-4 space-y-4">
+          <h2 className="text-xl font-semibold mb-2">Medicines</h2>
 
-          {/* Submit / Cancel */}
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-md"
-            >
-              {id ? "Update Prescription" : "Create Prescription"}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded-md"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
+          {medicines.map((item, idx) => (
+            <div key={idx} className="flex items-end space-x-4">
+              {/* ─ Chọn thuốc ───────────────── */}
+              <div className="flex-1">
+                <label className="block mb-1">Medicine</label>
+                <select
+                  value={item.drugId}
+                  onChange={(e) =>
+                    updateMedicineLine(idx, "drugId", e.target.value)
+                  }
+                  required
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="">Select medicine</option>
+                  {drugOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* ─ Số lượng ─────────────────── */}
+              <div className="w-24">
+                <label className="block mb-1">Qty</label>
+                <input
+                  type="number"
+                  value={item.quantity}
+                  min={1}
+                  onChange={(e) =>
+                    updateMedicineLine(idx, "quantity", e.target.value)
+                  }
+                  required
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* ─ Giá (unit price) ─────────── */}
+              <div className="w-28">
+                <label className="block mb-1">Unit Price</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={item.unitPrice}
+                  min={0}
+                  onChange={(e) =>
+                    updateMedicineLine(idx, "unitPrice", e.target.value)
+                  }
+                  required
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* ─ Nút xóa dòng (nếu > 1 dòng) ─ */}
+              {medicines.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeMedicineRow(idx)}
+                  className="text-red-600 hover:text-red-800 mb-1"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={addMedicineRow}
+            className="text-blue-600 hover:underline"
+          >
+            + Add another medicine
+          </button>
+        </div>
+
+        {/* ─ Submit button ──────────────────────────────── */}
+        <div>
+          <button
+            type="submit"
+            className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+          >
+            Create Prescription
+          </button>
+        </div>
+      </form>
     </div>
   );
-};
-
-export default PrescriptionForm;
+}
