@@ -1,4 +1,5 @@
 // src/app/dashboard/inventory/[id]/page.tsx
+
 import InventoryDetail from "@/components/InventoryDetail";
 
 interface Params {

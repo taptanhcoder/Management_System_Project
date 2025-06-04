@@ -1,4 +1,5 @@
 // src/app/dashboard/inventory/[id]/edit.tsx
+
 import InventoryForm from "@/components/InventoryForm";
 
 interface Params {

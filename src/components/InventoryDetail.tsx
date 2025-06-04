@@ -4,17 +4,19 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { format } from "date-fns";
 
 interface Drug {
   id: string;
   name: string;
-  category: string;
+  category: { id: string; name: string };
   quantity: number;
   expiryDate: string;
   supplier: string;
   purchasePrice: number;
   sellingPrice: number;
   description: string;
+  status: "OK" | "LOW_STOCK" | "EXPIRING_SOON" | "EXPIRED" | "OUT_OF_STOCK";
 }
 
 interface InventoryDetailProps {
@@ -23,37 +25,55 @@ interface InventoryDetailProps {
 
 const InventoryDetail = ({ id }: InventoryDetailProps) => {
   const [drug, setDrug] = useState<Drug | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   useEffect(() => {
     async function fetchDrug() {
-      // TODO: call GET /api/inventory/{id}
-      const mock: Drug = {
-        id,
-        name: "Paracetamol 500mg",
-        category: "Analgesics",
-        quantity: 120,
-        expiryDate: "2025-12-01",
-        supplier: "ABC Pharma",
-        purchasePrice: 1.5,
-        sellingPrice: 2,
-        description: "Pain reliever and fever reducer.",
-      };
-      setDrug(mock);
+      try {
+        const res = await fetch(`/api/inventory/${id}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Cannot fetch drug");
+        }
+        const data: Drug = await res.json();
+        setDrug(data);
+      } catch (e: any) {
+        console.error(e);
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchDrug();
   }, [id]);
 
-  const handleDelete = () => {
-    if (confirm(`Delete drug ${id}?`)) {
-      // TODO: DELETE /api/inventory/{id}
-      alert(`Deleted ${id} (demo)`);
-      router.push("/dashboard/inventory");
+  const handleDelete = async () => {
+    if (!confirm(`Delete drug ${id}?`)) return;
+    try {
+      const res = await fetch(`/api/inventory/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Cannot delete");
+      } else {
+        alert(`Deleted ${id}`);
+        router.push("/dashboard/inventory");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error deleting drug");
     }
   };
 
-  if (!drug) {
+  if (loading) {
     return <p className="p-6">Loading drug details...</p>;
+  }
+  if (error) {
+    return <p className="p-6 text-red-600">Error: {error}</p>;
+  }
+  if (!drug) {
+    return <p className="p-6">Drug not found.</p>;
   }
 
   return (
@@ -97,34 +117,40 @@ const InventoryDetail = ({ id }: InventoryDetailProps) => {
           <strong>Name:</strong> {drug.name}
         </p>
         <p>
-          <strong>Category:</strong> {drug.category}
+          <strong>Category:</strong> {drug.category.name}
         </p>
         <p>
           <strong>Quantity:</strong> {drug.quantity}
         </p>
         <p>
           <strong>Expiry Date:</strong>{" "}
-          {new Date(drug.expiryDate).toLocaleDateString("en-GB")}
+          {format(new Date(drug.expiryDate), "dd/MM/yyyy")}
         </p>
         <p>
           <strong>Supplier:</strong> {drug.supplier}
         </p>
         <p>
           <strong>Purchase Price:</strong>{" "}
-          {drug.purchasePrice.toLocaleString("en-US", {
+          {drug.purchasePrice.toLocaleString("vi-VN", {
             style: "currency",
-            currency: "USD",
+            currency: "VND",
           })}
         </p>
         <p>
           <strong>Selling Price:</strong>{" "}
-          {drug.sellingPrice.toLocaleString("en-US", {
+          {drug.sellingPrice.toLocaleString("vi-VN", {
             style: "currency",
-            currency: "USD",
+            currency: "VND",
           })}
         </p>
         <p>
           <strong>Description:</strong> {drug.description}
+        </p>
+        <p>
+          <strong>Status:</strong>{" "}
+          <span className="font-semibold text-gray-800 dark:text-gray-200">
+            {drug.status.replace("_", " ")}
+          </span>
         </p>
       </div>
 

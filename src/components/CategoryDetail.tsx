@@ -25,37 +25,75 @@ interface CategoryDetailProps {
 const CategoryDetail = ({ id }: CategoryDetailProps) => {
   const [category, setCategory] = useState<Category | null>(null);
   const [drugs, setDrugs] = useState<Drug[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     async function fetchCategory() {
-      // TODO: GET /api/catalog/categories/{id}
-      const mockCat: Category = {
-        id,
-        name: "Analgesics",
-        description: "Pain relievers",
-      };
-      setCategory(mockCat);
-      // TODO: GET /api/catalog/categories/{id}/drugs
-      const mockDrugs: Drug[] = [
-        { id: "DRG001", name: "Paracetamol 500mg", quantity: 120, price: 5 },
-        { id: "DRG003", name: "Aspirin 100mg", quantity: 80, price: 3 },
-      ];
-      setDrugs(mockDrugs);
+      try {
+        const res = await fetch(`/api/catalog/categories/${id}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Cannot fetch category");
+        }
+        const data = await res.json();
+        setCategory({
+          id: data.id,
+          name: data.name,
+          description: data.description,
+        });
+        const mapped: Drug[] = data.drugs.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          quantity: d.quantity,
+          price: d.sellingPrice,
+        }));
+        setDrugs(mapped);
+      } catch (e: any) {
+        console.error(e);
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchCategory();
   }, [id]);
 
-  const handleDeleteCategory = () => {
-    if (confirm(`Delete category ${id}?`)) {
-      // TODO: DELETE /api/catalog/categories/{id}
-      alert(`Deleted category ${id} (demo)`);
-      router.push("/dashboard/catalog");
+  const handleDeleteCategory = async () => {
+    if (!category) return;
+    if (!confirm(`Delete category "${category.name}"?`)) return;
+    try {
+      const res = await fetch(`/api/catalog/categories/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        alert(errData.error || "Cannot delete category");
+      } else {
+        router.push("/dashboard/catalog");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Network error. Please try again.");
     }
   };
 
-  if (!category) {
+  if (loading) {
     return <p className="p-6">Loading category...</p>;
+  }
+  if (error) {
+    return (
+      <div className="p-6 text-red-600">
+        <p>Error: {error}</p>
+        <Link href="/dashboard/catalog" className="text-blue-600 hover:underline">
+          Back to Categories
+        </Link>
+      </div>
+    );
+  }
+  if (!category) {
+    return <p className="p-6">Category not found.</p>;
   }
 
   return (
@@ -64,8 +102,8 @@ const CategoryDetail = ({ id }: CategoryDetailProps) => {
       <nav className="text-sm text-gray-500 dark:text-gray-400">
         <ol className="flex space-x-2 list-reset">
           <li>
-            <Link href="/dashboard/catalog" legacyBehavior>
-              <a className="hover:underline">Categories</a>
+            <Link href="/dashboard/catalog" className="hover:underline">
+              Categories
             </Link>
             <span className="mx-2">&gt;</span>
           </li>
@@ -81,10 +119,11 @@ const CategoryDetail = ({ id }: CategoryDetailProps) => {
           Category: {category.name}
         </h1>
         <div className="flex gap-2">
-          <Link href={`/dashboard/catalog/${id}/edit`} legacyBehavior>
-            <a className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md">
-              Edit
-            </a>
+          <Link
+            href={`/dashboard/catalog/${id}/edit`}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md"
+          >
+            Edit
           </Link>
           <button
             onClick={handleDeleteCategory}
@@ -92,10 +131,11 @@ const CategoryDetail = ({ id }: CategoryDetailProps) => {
           >
             Delete
           </button>
-          <Link href={`/dashboard/catalog/${id}/new-drug`} legacyBehavior>
-            <a className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-md">
-              + Add Drug
-            </a>
+          <Link
+            href={`/dashboard/catalog/${id}/new-drug`}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-md"
+          >
+            + Add Drug
           </Link>
         </div>
       </div>
@@ -141,8 +181,11 @@ const CategoryDetail = ({ id }: CategoryDetailProps) => {
                     })}
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/dashboard/catalog/${id}/${d.id}`} legacyBehavior>
-                      <a className="text-blue-600 hover:underline">View</a>
+                    <Link
+                      href={`/dashboard/catalog/${id}/${d.id}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      View
                     </Link>
                   </td>
                 </tr>
@@ -152,10 +195,8 @@ const CategoryDetail = ({ id }: CategoryDetailProps) => {
         </table>
       </div>
 
-      <Link href="/dashboard/catalog" legacyBehavior>
-        <a className="inline-block text-blue-600 hover:underline">
-          &larr; Back to Categories
-        </a>
+      <Link href="/dashboard/catalog" className="inline-block text-blue-600 hover:underline">
+        &larr; Back to Categories
       </Link>
     </div>
   );

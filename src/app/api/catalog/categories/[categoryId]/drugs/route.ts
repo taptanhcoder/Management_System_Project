@@ -14,31 +14,31 @@ const createDrugInCategorySchema = z.object({
   description: z.string().optional(),
 });
 
-export async function GET(
-  request: Request,
-  { params }: { params: { categoryId: string } }
-) {
+export async function GET(request: Request, { params }: { params: { categoryId: string } }) {
   const { categoryId } = params;
   try {
+    const cat = await prisma.category.findUnique({ where: { id: categoryId } });
+    if (!cat) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
     const drugs = await prisma.drug.findMany({
       where: { categoryId },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(drugs);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot fetch drugs" },
-      { status: 500 }
-    );
+    console.error(error);
+    return NextResponse.json({ error: "Cannot fetch drugs" }, { status: 500 });
   }
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: { categoryId: string } }
-) {
+export async function POST(request: Request, { params }: { params: { categoryId: string } }) {
   const { categoryId } = params;
   try {
+    const cat = await prisma.category.findUnique({ where: { id: categoryId } });
+    if (!cat) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
     const json = await request.json();
     const data = createDrugInCategorySchema.parse(json);
 
@@ -59,9 +59,7 @@ export async function POST(
     if (err instanceof z.ZodError) {
       return NextResponse.json({ errors: err.errors }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: "Cannot create drug" },
-      { status: 500 }
-    );
+    console.error(err);
+    return NextResponse.json({ error: "Cannot create drug" }, { status: 500 });
   }
 }

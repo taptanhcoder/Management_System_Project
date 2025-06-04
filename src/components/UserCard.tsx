@@ -2,9 +2,9 @@
 import Image from "next/image";
 
 interface UserCardProps {
-  label: string;        // e.g. “Employees”, “Customers”
+  label: string;        // e.g. “Employees”, “Customers”, “Suppliers”
   count: number;
-  period?: string;      // e.g. “2024/25”, “Q1 2025”
+  period?: string;      // e.g. “2024/25”, “Q2 2025”
   bgColor?: string;     // e.g. "bg-blue-200", "bg-green-200"
 }
 

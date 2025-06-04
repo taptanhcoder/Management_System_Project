@@ -1,6 +1,7 @@
-// src/app/dashboard/catalog/categoryId/page.tsx
+//// src/app/dashboard/catalog/page.tsx
+
 import CategoryList from "@/components/CategoryList";
 
-export default function CategoryPage() {
+export default function CatalogPage() {
   return <CategoryList />;
 }

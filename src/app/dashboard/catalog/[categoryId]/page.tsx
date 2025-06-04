@@ -1,4 +1,5 @@
 // src/app/dashboard/catalog/[categoryId]/page.tsx
+
 import CategoryDetail from "@/components/CategoryDetail";
 
 interface Params {

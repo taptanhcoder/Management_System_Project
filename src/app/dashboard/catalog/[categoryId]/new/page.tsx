@@ -1,4 +1,5 @@
 // src/app/dashboard/catalog/[categoryId]/new-drug.tsx
+
 import DrugForm from "@/components/DrugForm";
 
 interface Params {

@@ -14,31 +14,36 @@ const updateDrugSchema = z.object({
   description: z.string().optional(),
 });
 
-export async function GET(
-  request: Request,
-  { params }: { params: { categoryId: string; drugId: string } }
-) {
-  const { drugId } = params;
+export async function GET(request: Request, { params }: { params: { categoryId: string; drugId: string } }) {
+  const { categoryId, drugId } = params;
   try {
+    const cat = await prisma.category.findUnique({ where: { id: categoryId } });
+    if (!cat) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
     const drug = await prisma.drug.findUnique({ where: { id: drugId } });
-    if (!drug) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!drug || drug.categoryId !== categoryId) {
+      return NextResponse.json({ error: "Drug not found in this category" }, { status: 404 });
     }
     return NextResponse.json(drug);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot fetch drug" },
-      { status: 500 }
-    );
+    console.error(error);
+    return NextResponse.json({ error: "Cannot fetch drug" }, { status: 500 });
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { categoryId: string; drugId: string } }
-) {
-  const { drugId } = params;
+export async function PUT(request: Request, { params }: { params: { categoryId: string; drugId: string } }) {
+  const { categoryId, drugId } = params;
   try {
+    const cat = await prisma.category.findUnique({ where: { id: categoryId } });
+    if (!cat) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+    const existingDrug = await prisma.drug.findUnique({ where: { id: drugId } });
+    if (!existingDrug || existingDrug.categoryId !== categoryId) {
+      return NextResponse.json({ error: "Drug not found in this category" }, { status: 404 });
+    }
+
     const json = await request.json();
     const data = updateDrugSchema.parse(json);
 
@@ -59,25 +64,33 @@ export async function PUT(
     if (err instanceof z.ZodError) {
       return NextResponse.json({ errors: err.errors }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: "Cannot update drug" },
-      { status: 500 }
-    );
+    console.error(err);
+    return NextResponse.json({ error: "Cannot update drug" }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { categoryId: string; drugId: string } }
-) {
-  const { drugId } = params;
+export async function DELETE(request: Request, { params }: { params: { categoryId: string; drugId: string } }) {
+  const { categoryId, drugId } = params;
   try {
+    const cat = await prisma.category.findUnique({ where: { id: categoryId } });
+    if (!cat) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+    const existingDrug = await prisma.drug.findUnique({ where: { id: drugId } });
+    if (!existingDrug || existingDrug.categoryId !== categoryId) {
+      return NextResponse.json({ error: "Drug not found in this category" }, { status: 404 });
+    }
+
     await prisma.drug.delete({ where: { id: drugId } });
     return NextResponse.json({ message: "Deleted" });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot delete drug" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    if (error.code === "P2003" || error.code === "P2025") {
+      return NextResponse.json(
+        { error: "Cannot delete drug: it is referenced elsewhere." },
+        { status: 400 }
+      );
+    }
+    console.error(error);
+    return NextResponse.json({ error: "Cannot delete drug" }, { status: 500 });
   }
 }

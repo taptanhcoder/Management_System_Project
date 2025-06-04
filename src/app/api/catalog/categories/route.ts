@@ -16,10 +16,8 @@ export async function GET() {
     });
     return NextResponse.json(cats);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot fetch categories" },
-      { status: 500 }
-    );
+    console.error(error);
+    return NextResponse.json({ error: "Cannot fetch categories" }, { status: 500 });
   }
 }
 
@@ -34,9 +32,17 @@ export async function POST(request: Request) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ errors: err.errors }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: "Cannot create category" },
-      { status: 500 }
-    );
+    if (
+      err.code === "P2002" &&
+      Array.isArray(err.meta?.target) &&
+      err.meta.target.includes("name")
+    ) {
+      return NextResponse.json(
+        { error: "Category name already exists" },
+        { status: 400 }
+      );
+    }
+    console.error(err);
+    return NextResponse.json({ error: "Cannot create category" }, { status: 500 });
   }
 }

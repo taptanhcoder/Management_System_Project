@@ -16,13 +16,12 @@ interface CountChartProps {
 }
 
 const CountChart = ({ total, expired, inStock, className = "" }: CountChartProps) => {
-  // Calculate percentages
   const inStockPercent = total > 0 ? Math.round((inStock / total) * 100) : 0;
   const expiredPercent = total > 0 ? 100 - inStockPercent : 0;
 
   const data = [
-    { name: "In Stock", count: inStock, fill: "#34D399" },   // green
-    { name: "Expired", count: expired, fill: "#F87171" },    // red
+    { name: "In Stock", count: inStock, fill: "#34D399" },
+    { name: "Expired", count: expired, fill: "#F87171" },
   ];
 
   return (

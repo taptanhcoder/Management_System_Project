@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 interface FinanceData {
-  month: string;    // e.g. "Jan", "Feb", ...
+  month: string;    // "Jan", "Feb", ...
   income: number;
   expense: number;
 }
@@ -28,22 +28,14 @@ const FinanceChart = ({ className = "" }: FinanceChartProps) => {
 
   useEffect(() => {
     async function fetchFinanceData() {
-      // TODO: thay bằng API thực khi sẵn sàng
-      const json: FinanceData[] = [
-        { month: "Jan", income: 4000, expense: 2400 },
-        { month: "Feb", income: 3000, expense: 1398 },
-        { month: "Mar", income: 2000, expense: 9800 },
-        { month: "Apr", income: 2780, expense: 3908 },
-        { month: "May", income: 1890, expense: 4800 },
-        { month: "Jun", income: 2390, expense: 3800 },
-        { month: "Jul", income: 3490, expense: 4300 },
-        { month: "Aug", income: 3490, expense: 4300 },
-        { month: "Sep", income: 3490, expense: 4300 },
-        { month: "Oct", income: 3490, expense: 4300 },
-        { month: "Nov", income: 3490, expense: 4300 },
-        { month: "Dec", income: 3490, expense: 4300 },
-      ];
-      setData(json);
+      try {
+        const res = await fetch("/api/dashboard/finance-summary");
+        if (!res.ok) throw new Error("Cannot fetch finance data");
+        const json: FinanceData[] = await res.json();
+        setData(json);
+      } catch (err) {
+        console.error(err);
+      }
     }
     fetchFinanceData();
   }, []);
@@ -69,10 +61,7 @@ const FinanceChart = ({ className = "" }: FinanceChartProps) => {
             tickLine={false}
             tickFormatter={(val) => `$${val}`}
           />
-          <Tooltip
-            formatter={(val: number) => `$${val}`}
-            labelStyle={{ color: "#374151" }}
-          />
+          <Tooltip formatter={(val: number) => `$${val}`} labelStyle={{ color: "#374151" }} />
           <Legend
             align="center"
             verticalAlign="top"

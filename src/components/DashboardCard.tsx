@@ -9,7 +9,7 @@ type DashboardCardProps = {
   icon: ReactNode;
   action: string;
   bgClass?: string;   // e.g. "bg-green-100", "bg-yellow-100", etc.
-  href?: string;      // if provided, wraps card in a Link
+  href?: string;
 };
 
 const DashboardCard = ({
@@ -35,11 +35,7 @@ const DashboardCard = ({
     </Card>
   );
 
-  return href ? (
-    <Link href={href}>{cardBody}</Link>
-  ) : (
-    cardBody
-  );
+  return href ? <Link href={href}>{cardBody}</Link> : cardBody;
 };
 
 export default DashboardCard;

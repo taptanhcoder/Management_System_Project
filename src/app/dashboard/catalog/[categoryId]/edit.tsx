@@ -1,4 +1,5 @@
-// src/app/dashboard/catalog/[categoryId]/edit.tsx
+// src/app/dashboard/catalog/[categoryId]/edit/page.tsx
+
 import CategoryForm from "@/components/CategoryForm";
 
 interface Params {

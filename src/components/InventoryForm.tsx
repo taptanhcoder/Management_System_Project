@@ -3,14 +3,44 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 
 interface InventoryFormProps {
-  id?: string; // nếu có, edit; nếu không, new
+  id?: string;
 }
 
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface DrugDetail {
+  id: string;
+  name: string;
+  category: { id: string; name: string };
+  quantity: number;
+  expiryDate: string;
+  supplier: string;
+  purchasePrice: number;
+  sellingPrice: number;
+  description: string;
+}
+
+const fetcher = (url: string) =>
+  fetch(url).then(async (res) => {
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Error fetching data");
+    }
+    return res.json();
+  });
+
 const InventoryForm = ({ id }: InventoryFormProps) => {
+  const router = useRouter();
+
+  // Form state
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [expiryDate, setExpiryDate] = useState("");
   const [supplier, setSupplier] = useState("");
@@ -18,97 +48,168 @@ const InventoryForm = ({ id }: InventoryFormProps) => {
   const [sellingPrice, setSellingPrice] = useState(0);
   const [description, setDescription] = useState("");
 
-  const router = useRouter();
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
+  // Fetch danh sách category
+  const {
+    data: categories,
+    error: categoriesError,
+    isLoading: loadingCategories,
+  } = useSWR<Category[]>("/api/catalog/categories", fetcher);
+
+  // Nếu có id, fetch chi tiết để fill form
   useEffect(() => {
     if (id) {
-      // TODO: fetch GET /api/inventory/{id}
-      const mock = {
-        name: "Paracetamol 500mg",
-        category: "Analgesics",
-        quantity: 120,
-        expiryDate: "2025-12-01",
-        supplier: "ABC Pharma",
-        purchasePrice: 1.5,
-        sellingPrice: 2,
-        description: "Pain reliever.",
-      };
-      setName(mock.name);
-      setCategory(mock.category);
-      setQuantity(mock.quantity);
-      setExpiryDate(mock.expiryDate);
-      setSupplier(mock.supplier);
-      setPurchasePrice(mock.purchasePrice);
-      setSellingPrice(mock.sellingPrice);
-      setDescription(mock.description);
+      setLoading(true);
+      fetch(`/api/inventory/${id}`)
+        .then(async (res) => {
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Cannot fetch drug");
+          }
+          const data: DrugDetail = await res.json();
+          setName(data.name);
+          setCategoryId(data.category.id);
+          setQuantity(data.quantity);
+          setExpiryDate(data.expiryDate.slice(0, 10));
+          setSupplier(data.supplier);
+          setPurchasePrice(data.purchasePrice);
+          setSellingPrice(data.sellingPrice);
+          setDescription(data.description || "");
+        })
+        .catch((e: any) => {
+          console.error(e);
+          setErrorMsg(e.message);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
   }, [id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg("");
+
+    if (!name || !categoryId || quantity < 0 || !expiryDate || !supplier) {
+      setErrorMsg("Please fill all required fields");
+      return;
+    }
+
     const payload = {
       name,
-      category,
+      categoryId,
       quantity,
-      expiryDate,
+      expiryDate, // "YYYY-MM-DD"
       supplier,
       purchasePrice,
       sellingPrice,
       description,
     };
-    if (id) {
-      // TODO: PUT /api/inventory/{id}
-      alert(`Updated drug ${id} (demo)`);
-    } else {
-      // TODO: POST /api/inventory
-      alert("Created new drug (demo)");
+
+    try {
+      let res;
+      if (id) {
+        // EDIT: PUT /api/inventory/{id}
+        res = await fetch(`/api/inventory/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        // CREATE / RESTOCK: POST /api/inventory
+        res = await fetch("/api/inventory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (!res.ok) {
+        const err = await res.json();
+        setErrorMsg(
+          err.error || (err.errors ? JSON.stringify(err.errors) : "Error")
+        );
+      } else {
+        router.push("/dashboard/inventory");
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg("Network or server error");
     }
-    router.push("/dashboard/inventory");
   };
+
+  if (loadingCategories) {
+    return <div className="p-6">Loading categories...</div>;
+  }
+  if (categoriesError) {
+    return <div className="p-6 text-red-600">Error loading categories</div>;
+  }
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {id ? "Edit Drug" : "Add New Drug"}
+          {id ? "Edit Drug" : "Add / Restock Drug"}
         </h1>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        {errorMsg && (
+          <div className="mb-4 text-red-600 font-medium">{errorMsg}</div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
             <label className="block text-gray-700 dark:text-gray-200 text-sm mb-1">
-              Name
+              Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 dark:bg-gray-600 text-gray-800 dark:text-white"
+              disabled={!!id} // Khi edit, không cho đổi name
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 dark:bg-gray-600 text-gray-800 dark:text-white ${
+                id ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             />
+            {id && (
+              <p className="text-xs text-gray-500 mt-1">
+                Cannot change name when editing. To restock, adjust quantity.
+              </p>
+            )}
           </div>
 
           {/* Category */}
           <div>
             <label className="block text-gray-700 dark:text-gray-200 text-sm mb-1">
-              Category
+              Category <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
               required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 dark:bg-gray-600 text-gray-800 dark:text-white"
-            />
+              disabled={!!id}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 dark:bg-gray-600 text-gray-800 dark:text-white ${
+                id ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              <option value="">-- Select Category --</option>
+              {categories!.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Quantity */}
           <div>
             <label className="block text-gray-700 dark:text-gray-200 text-sm mb-1">
-              Quantity
+              Quantity <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -123,7 +224,7 @@ const InventoryForm = ({ id }: InventoryFormProps) => {
           {/* Expiry Date */}
           <div>
             <label className="block text-gray-700 dark:text-gray-200 text-sm mb-1">
-              Expiry Date
+              Expiry Date <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -137,7 +238,7 @@ const InventoryForm = ({ id }: InventoryFormProps) => {
           {/* Supplier */}
           <div>
             <label className="block text-gray-700 dark:text-gray-200 text-sm mb-1">
-              Supplier
+              Supplier <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -158,7 +259,6 @@ const InventoryForm = ({ id }: InventoryFormProps) => {
                 type="number"
                 value={purchasePrice}
                 onChange={(e) => setPurchasePrice(Number(e.target.value))}
-                required
                 min={0}
                 step="0.01"
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 dark:bg-gray-600 text-gray-800 dark:text-white"
@@ -172,7 +272,6 @@ const InventoryForm = ({ id }: InventoryFormProps) => {
                 type="number"
                 value={sellingPrice}
                 onChange={(e) => setSellingPrice(Number(e.target.value))}
-                required
                 min={0}
                 step="0.01"
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 dark:bg-gray-600 text-gray-800 dark:text-white"
@@ -199,7 +298,7 @@ const InventoryForm = ({ id }: InventoryFormProps) => {
               type="submit"
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-md"
             >
-              {id ? "Update Drug" : "Create Drug"}
+              {id ? "Update Drug" : "Create / Restock Drug"}
             </button>
             <button
               type="button"

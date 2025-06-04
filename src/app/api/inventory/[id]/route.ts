@@ -4,12 +4,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// Schema validate cho body khi cập nhật thuốc
+// Validation schema cho PUT (update toàn bộ thông tin)
 const updateDrugSchema = z.object({
   name: z.string(),
   categoryId: z.string(),
   quantity: z.number().int().nonnegative(),
-  expiryDate: z.string(),
+  expiryDate: z.string(), // "YYYY-MM-DD"
   supplier: z.string(),
   purchasePrice: z.number().nonnegative(),
   sellingPrice: z.number().nonnegative(),
@@ -24,17 +24,40 @@ export async function GET(
   try {
     const drug = await prisma.drug.findUnique({
       where: { id },
-      include: { category: true },
+      include: { category: { select: { id: true, name: true } } },
     });
     if (!drug) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    return NextResponse.json(drug);
+    // Tính status tương tự như ở GET all
+    const today = new Date();
+    let status = "OK";
+    if (drug.quantity === 0) status = "OUT_OF_STOCK";
+    else if (drug.expiryDate < today) status = "EXPIRED";
+    else if (
+      new Date(drug.expiryDate).getTime() <=
+      today.getTime() + EXPIRY_SOON_DAYS * 24 * 60 * 60 * 1000
+    )
+      status = "EXPIRING_SOON";
+    else if (drug.quantity < LOW_STOCK_THRESHOLD) status = "LOW_STOCK";
+
+    return NextResponse.json({
+      id: drug.id,
+      name: drug.name,
+      category: { id: drug.category.id, name: drug.category.name },
+      quantity: drug.quantity,
+      expiryDate: drug.expiryDate,
+      supplier: drug.supplier,
+      purchasePrice: drug.purchasePrice,
+      sellingPrice: drug.sellingPrice,
+      description: drug.description,
+      status,
+      createdAt: drug.createdAt,
+      updatedAt: drug.updatedAt,
+    });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot fetch drug" },
-      { status: 500 }
-    );
+    console.error(error);
+    return NextResponse.json({ error: "Cannot fetch drug" }, { status: 500 });
   }
 }
 
@@ -65,10 +88,8 @@ export async function PUT(
     if (err instanceof z.ZodError) {
       return NextResponse.json({ errors: err.errors }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: "Cannot update drug" },
-      { status: 500 }
-    );
+    console.error(err);
+    return NextResponse.json({ error: "Cannot update drug" }, { status: 500 });
   }
 }
 
@@ -81,9 +102,11 @@ export async function DELETE(
     await prisma.drug.delete({ where: { id } });
     return NextResponse.json({ message: "Deleted" });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot delete drug" },
-      { status: 500 }
-    );
+    console.error(error);
+    return NextResponse.json({ error: "Cannot delete drug" }, { status: 500 });
   }
 }
+
+// Hằng số chia sẻ (nếu muốn sử dụng lại)
+const LOW_STOCK_THRESHOLD = 10;
+const EXPIRY_SOON_DAYS = 7;

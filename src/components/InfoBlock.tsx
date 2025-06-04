@@ -28,24 +28,18 @@ const InfoBlock = ({ title, rightLabel, items, link }: InfoBlockProps) => {
           )}
           {link && (
             <Link href={link.href} legacyBehavior>
-              <a className="text-blue-600 text-sm hover:underline">
-                {link.text} →
-              </a>
+              <a className="text-blue-600 text-sm hover:underline">{link.text} →</a>
             </Link>
           )}
         </div>
       </div>
 
-      {/* Body: grid of items */}
+      {/* Body */}
       <div className="grid grid-cols-2 gap-4">
         {items.map((item, idx) => (
           <div key={idx}>
-            <p className="text-xl font-semibold text-gray-900 dark:text-white">
-              {item.value}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-300">
-              {item.label}
-            </p>
+            <p className="text-xl font-semibold text-gray-900 dark:text-white">{item.value}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-300">{item.label}</p>
           </div>
         ))}
       </div>

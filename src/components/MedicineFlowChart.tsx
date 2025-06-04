@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 interface FlowData {
-  day: string;      // e.g. "Mon", "Tue", etc.
+  day: string;      // "Mon", "Tue", ...
   received: number;
   sold: number;
 }
@@ -28,15 +28,14 @@ const MedicineFlowChart = ({ className = "" }: MedicineFlowChartProps) => {
 
   useEffect(() => {
     async function fetchFlowData() {
-      // TODO: thay bằng API thực khi sẵn sàng
-      const json: FlowData[] = [
-        { day: "Mon", received: 60, sold: 50 },
-        { day: "Tue", received: 70, sold: 60 },
-        { day: "Wed", received: 90, sold: 80 },
-        { day: "Thu", received: 65, sold: 70 },
-        { day: "Fri", received: 60, sold: 55 },
-      ];
-      setData(json);
+      try {
+        const res = await fetch("/api/dashboard/medicine-flow");
+        if (!res.ok) throw new Error("Cannot fetch medicine flow");
+        const json: FlowData[] = await res.json();
+        setData(json);
+      } catch (err) {
+        console.error(err);
+      }
     }
     fetchFlowData();
   }, []);
@@ -61,8 +60,7 @@ const MedicineFlowChart = ({ className = "" }: MedicineFlowChartProps) => {
             tickLine={false}
             axisLine={false}
             style={{ fontSize: 12 }}
-            domain={[0, 100]}
-            tickCount={6}
+            domain={[0, "dataMax + 10"]}
           />
           <Tooltip
             contentStyle={{ backgroundColor: "#fff", borderRadius: 6 }}
