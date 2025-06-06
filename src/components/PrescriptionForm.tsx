@@ -153,12 +153,17 @@ export default function PrescriptionForm() {
   // ─── 5. JSX form ───────────────────────────────────────
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">New Prescription</h1>
+      {/* Tiêu đề chính */}
+      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
+        New Prescription
+      </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* ─ Customer ────────────────── */}
         <div>
-          <label className="block mb-1 font-medium">Customer</label>
+          <label className="block mb-1 font-medium text-gray-900 dark:text-white">
+            Customer
+          </label>
           <input
             type="text"
             value={customer}
@@ -170,7 +175,9 @@ export default function PrescriptionForm() {
 
         {/* ─ Date ─────────────────────── */}
         <div>
-          <label className="block mb-1 font-medium">Date</label>
+          <label className="block mb-1 font-medium text-gray-900 dark:text-white">
+            Date
+          </label>
           <input
             type="date"
             value={date}
@@ -182,7 +189,9 @@ export default function PrescriptionForm() {
 
         {/* ─ Status ───────────────────── */}
         <div>
-          <label className="block mb-1 font-medium">Status</label>
+          <label className="block mb-1 font-medium text-gray-900 dark:text-white">
+            Status
+          </label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as any)}
@@ -195,13 +204,17 @@ export default function PrescriptionForm() {
 
         {/* ─ Medicines (nhiều dòng) ─────────────────────────── */}
         <div className="border-t pt-4 space-y-4">
-          <h2 className="text-xl font-semibold mb-2">Medicines</h2>
+          <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+            Medicines
+          </h2>
 
           {medicines.map((item, idx) => (
             <div key={idx} className="flex items-end space-x-4">
               {/* ─ Chọn thuốc ───────────────── */}
               <div className="flex-1">
-                <label className="block mb-1">Medicine</label>
+                <label className="block mb-1 text-gray-900 dark:text-white">
+                  Medicine
+                </label>
                 <select
                   value={item.drugId}
                   onChange={(e) =>
@@ -221,7 +234,9 @@ export default function PrescriptionForm() {
 
               {/* ─ Số lượng ─────────────────── */}
               <div className="w-24">
-                <label className="block mb-1">Qty</label>
+                <label className="block mb-1 text-gray-900 dark:text-white">
+                  Qty
+                </label>
                 <input
                   type="number"
                   value={item.quantity}
@@ -236,7 +251,9 @@ export default function PrescriptionForm() {
 
               {/* ─ Giá (unit price) ─────────── */}
               <div className="w-28">
-                <label className="block mb-1">Unit Price</label>
+                <label className="block mb-1 text-gray-900 dark:text-white">
+                  Unit Price
+                </label>
                 <input
                   type="number"
                   step="0.01"

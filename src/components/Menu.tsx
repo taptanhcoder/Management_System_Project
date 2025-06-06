@@ -222,7 +222,7 @@ const Menu = ({ collapsed }: MenuProps) => {
         <li>
           <button
             onClick={() => {
-              // để logout, dùng useAuth().logout() trong Navbar
+
             }}
             className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-100 dark:hover:bg-red-700 transition"
             title="Logout"

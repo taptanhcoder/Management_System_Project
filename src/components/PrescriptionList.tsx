@@ -18,11 +18,7 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-/**
- * Đây là một Server Component (mặc định Next.js 13+)
- * Khi page.tsx render <PrescriptionList />, phần code này sẽ chạy ở phía server,
- * gọi Prisma để lấy toàn bộ đơn thuốc (prescriptions) và render thành một bảng.
- */
+
 export default async function PrescriptionList() {
   // 1. Tải dữ liệu prescriptions từ database, sắp xếp theo ngày (mới nhất trước)
   const prescriptions = await prisma.prescription.findMany({

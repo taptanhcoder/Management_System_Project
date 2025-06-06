@@ -87,7 +87,9 @@ const InventoryDetail = ({ id }: InventoryDetailProps) => {
             </Link>
             <span className="mx-2">&gt;</span>
           </li>
-          <li className="font-semibold text-gray-900 dark:text-white">{drug.id}</li>
+          <li className="font-semibold text-gray-900 dark:text-white">
+            {drug.id}
+          </li>
         </ol>
       </nav>
 
@@ -113,42 +115,42 @@ const InventoryDetail = ({ id }: InventoryDetailProps) => {
 
       {/* Info Card */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-2">
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Name:</strong> {drug.name}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Category:</strong> {drug.category.name}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Quantity:</strong> {drug.quantity}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Expiry Date:</strong>{" "}
           {format(new Date(drug.expiryDate), "dd/MM/yyyy")}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Supplier:</strong> {drug.supplier}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Purchase Price:</strong>{" "}
           {drug.purchasePrice.toLocaleString("vi-VN", {
             style: "currency",
             currency: "VND",
           })}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Selling Price:</strong>{" "}
           {drug.sellingPrice.toLocaleString("vi-VN", {
             style: "currency",
             currency: "VND",
           })}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Description:</strong> {drug.description}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Status:</strong>{" "}
-          <span className="font-semibold text-gray-800 dark:text-gray-200">
+          <span className="font-semibold text-gray-900 dark:text-white">
             {drug.status.replace("_", " ")}
           </span>
         </p>

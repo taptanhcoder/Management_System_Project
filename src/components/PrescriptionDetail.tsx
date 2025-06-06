@@ -96,10 +96,10 @@ const PrescriptionDetail = ({ id }: PrescriptionDetailProps) => {
 
       {/* Info */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-2">
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Customer:</strong> {rx.customer}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Date:</strong>{" "}
           {new Date(rx.date).toLocaleDateString("en-GB", {
             day: "2-digit",
@@ -107,19 +107,19 @@ const PrescriptionDetail = ({ id }: PrescriptionDetailProps) => {
             year: "numeric",
           })}
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Status:</strong>{" "}
           <span
             className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
               rx.status === "Confirmed"
-                ? "bg-green-100 text-green-700"
-                : "bg-yellow-100 text-yellow-700"
+                ? "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200"
+                : "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-200"
             }`}
           >
             {rx.status}
           </span>
         </p>
-        <p>
+        <p className="text-gray-900 dark:text-white">
           <strong>Total:</strong>{" "}
           {rx.total.toLocaleString("en-US", {
             style: "currency",
@@ -130,7 +130,7 @@ const PrescriptionDetail = ({ id }: PrescriptionDetailProps) => {
 
       {/* Medicines Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
+        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
           Medicines
         </h2>
         <table className="min-w-full text-left text-sm text-gray-700 dark:text-gray-300 border-collapse border border-gray-300 dark:border-gray-700">
@@ -156,19 +156,19 @@ const PrescriptionDetail = ({ id }: PrescriptionDetailProps) => {
                 key={idx}
                 className="hover:bg-gray-50 dark:hover:bg-gray-900 transition"
               >
-                <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">
+                <td className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-gray-900 dark:text-white">
                   {med.name}
                 </td>
-                <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">
+                <td className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-gray-900 dark:text-white">
                   {med.quantity}
                 </td>
-                <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">
+                <td className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-gray-900 dark:text-white">
                   {med.price.toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
                   })}
                 </td>
-                <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">
+                <td className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-gray-900 dark:text-white">
                   {(med.price * med.quantity).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",

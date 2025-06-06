@@ -2,8 +2,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Search, Bell, ChevronDown } from "lucide-react";
-import Image from "next/image";
+import { Bell, ChevronDown } from "lucide-react";
 import Link from "next/link";
 
 interface NavbarProps {
@@ -40,26 +39,20 @@ const Navbar = ({ onLogout, userName }: NavbarProps) => {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setShowDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
-    <header className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-      {/* Search bar */}
-      <div className="flex items-center w-full max-w-md bg-gray-100 dark:bg-gray-800 rounded-md px-3 py-2">
-        <input
-          type="text"
-          placeholder="Search..."
-          className="bg-transparent w-full focus:outline-none text-sm text-gray-800 dark:text-white"
-        />
-        <Search size={18} className="text-gray-500 dark:text-gray-400" />
-      </div>
-
+    <header className="w-full px-6 py-4 flex justify-end items-center border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
       {/* Right section */}
       <div className="flex items-center gap-6">
         {/* User & Time */}
@@ -84,13 +77,19 @@ const Navbar = ({ onLogout, userName }: NavbarProps) => {
 
         {/* Avatar & Dropdown */}
         <div className="relative" ref={dropdownRef}>
-          <button onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-1 focus:outline-none">
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="flex items-center gap-1 focus:outline-none"
+          >
             <div className="w-9 h-9 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
               <span className="text-gray-700 dark:text-gray-200">
                 {userName.charAt(0).toUpperCase()}
               </span>
             </div>
-            <ChevronDown size={16} className="text-gray-600 dark:text-gray-300" />
+            <ChevronDown
+              size={16}
+              className="text-gray-600 dark:text-gray-300"
+            />
           </button>
 
           {showDropdown && (
