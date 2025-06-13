@@ -1,13 +1,13 @@
-// File: src/app/api/invoices/route.ts
+// src/app/api/invoices/route.ts
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// Schema validate input cho POST
 const createInvoiceSchema = z.object({
   prescriptionId: z.string().optional(),
   customerId: z.string().optional(),
+  customerName: z.string().optional(),
   date: z.coerce.date(),
   status: z.enum(["PAID", "UNPAID"]).default("UNPAID"),
   items: z
@@ -21,7 +21,6 @@ const createInvoiceSchema = z.object({
     .optional(),
 });
 
-// GET /api/invoices?page=…&limit=…
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = Number(searchParams.get("page") ?? 1);
@@ -47,18 +46,21 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/invoices
 export async function POST(request: Request) {
   try {
-    // 1. Parse & validate body
-    const json = await request.json();
-    const { prescriptionId, customerId: explicitCustId, date, status, items } =
-      createInvoiceSchema.parse(json);
+    const {
+      prescriptionId,
+      customerId: explicitId,
+      customerName,
+      date,
+      status,
+      items,
+    } = createInvoiceSchema.parse(await request.json());
 
-    // 2. Run in transaction
     const inv = await prisma.$transaction(async (tx) => {
-      // a) Xác định customerId
-      let custId = explicitCustId ?? "";
+      let custId: string | null = explicitId ?? null;
+
+      // 1) Nếu có prescriptionId thì resolve sang Customer bằng tên
       if (prescriptionId) {
         const pres = await tx.prescription.findUnique({
           where: { id: prescriptionId },
@@ -67,67 +69,83 @@ export async function POST(request: Request) {
         if (!pres) throw new Error("Prescription không tồn tại");
         if (pres.status === "CONFIRMED") throw new Error("Đơn đã được confirm");
 
-        // pres.customer là chuỗi ban đầu (khi tạo Prescription, bạn đã lưu Customer.id tại đây)
-        const candidate = pres.customer;
-
-        // Kiểm tra xem đúng là một Customer.id
-        const foundById = await tx.customer.findUnique({ where: { id: candidate } });
-        if (foundById) {
-          custId = foundById.id;
+        const name = pres.customer; // tên gốc lưu trong Prescription.customer
+        const byName = await tx.customer.findFirst({ where: { name } });
+        if (byName) {
+          custId = byName.id;
         } else {
-          // fallback: tìm theo name (nếu bạn lưu tên khách)
-          const foundByName = await tx.customer.findFirst({ where: { name: candidate } });
-          if (foundByName) {
-            custId = foundByName.id;
-          } else {
-            throw new Error(`Không tìm thấy khách hàng tương ứng với Prescription`);
-          }
+          // tạo mới Customer với email tạm
+          const email = `guest-pres-${prescriptionId}@pharmacy.local`;
+          const newC = await tx.customer.create({
+            data: { name, email, phone: "", address: "" },
+          });
+          custId = newC.id;
         }
       }
 
-      if (!custId) throw new Error("customerId bắt buộc nếu không dùng prescription");
+      // 2) Nếu không có custId nhưng có customerName (walk-in)
+      if (!custId && customerName) {
+        const name = customerName.trim();
+        const exist = await tx.customer.findFirst({ where: { name } });
+        if (exist) {
+          custId = exist.id;
+        } else {
+          const email = `guest-${Date.now()}@pharmacy.local`;
+          const newC = await tx.customer.create({
+            data: { name, email, phone: "", address: "" },
+          });
+          custId = newC.id;
+        }
+      }
 
-      // b) Xác định items
+      // 3) Nếu explicitId vẫn tồn, dùng luôn
+      if (!custId && explicitId) custId = explicitId;
+
+      if (!custId) {
+        throw new Error(
+          "Phải cung cấp prescriptionId, customerId hoặc customerName"
+        );
+      }
+
+      // 4) Xác định items (ưu tiên payload, fallback lấy trong Prescription)
       let invoiceItems = items;
-      if (prescriptionId) {
-        // tái sử dụng pres.items nếu lấy từ đơn
-        const presItems = (await tx.prescription.findUnique({
+      if (
+        prescriptionId &&
+        (!invoiceItems || invoiceItems.length === 0)
+      ) {
+        const pres = await tx.prescription.findUnique({
           where: { id: prescriptionId },
           include: { items: true },
-        }))!.items;
-        invoiceItems = presItems.map((it) => ({
+        });
+        invoiceItems = pres!.items.map((it) => ({
           drugId: it.drugId,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
         }));
       }
-      if (!invoiceItems?.length) throw new Error("Không có items để tạo hóa đơn");
+      if (!invoiceItems || invoiceItems.length === 0) {
+        throw new Error("Không có items để tạo hóa đơn");
+      }
 
-      // c) Tính total
+      // 5) Tính total
       const total = invoiceItems.reduce(
         (sum, it) => sum + it.quantity * it.unitPrice,
         0
       );
 
-      // d) Tạo invoice + items
+      // 6) Tạo hóa đơn + items
       const created = await tx.invoice.create({
         data: {
           customerId: custId,
           date,
           status,
           total,
-          items: {
-            create: invoiceItems.map((it) => ({
-              drugId: it.drugId,
-              quantity: it.quantity,
-              unitPrice: it.unitPrice,
-            })),
-          },
+          items: { create: invoiceItems },
         },
         include: { items: true },
       });
 
-      // e) Nếu PAID, trừ kho và confirm prescription
+      // 7) Nếu đã PAID thì trừ kho & confirm Prescription
       if (status === "PAID") {
         for (const it of created.items) {
           const d = await tx.drug.findUnique({ where: { id: it.drugId } });
@@ -149,14 +167,11 @@ export async function POST(request: Request) {
       return created;
     });
 
-    // 3. Trả về hoá đơn mới tạo
     return NextResponse.json(inv, { status: 201 });
   } catch (err: any) {
-    // Zod validation errors
     if (err instanceof z.ZodError) {
       return NextResponse.json({ errors: err.errors }, { status: 400 });
     }
-    // Bất kỳ lỗi nào khác cũng trả JSON
     return NextResponse.json(
       { error: err.message || "Cannot create invoice" },
       { status: 400 }
