@@ -1,14 +1,16 @@
-// src/app/api/invoices/route.ts
+// src/app/api/invoices/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { deductInventory } from "@/lib/inventory";
 
-const createInvoiceSchema = z.object({
+const updateInvoiceSchema = z.object({
   customerId: z.string(),
-  date: z.string(), // ISO date string: "2025-06-01"
+  date: z.coerce.date(),
   status: z.enum(["PAID", "UNPAID"]).optional(),
   items: z.array(
     z.object({
+      id: z.string().optional(),
       drugId: z.string(),
       quantity: z.number().int().positive(),
       unitPrice: z.number().nonnegative(),
@@ -16,44 +18,38 @@ const createInvoiceSchema = z.object({
   ),
 });
 
-export async function GET() {
-  try {
-    const list = await prisma.invoice.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        customer: {
-          select: { id: true, name: true },
-        },
-      },
+export async function PUT(
+  request: Request,
+  { params: { id } }: { params: { id: string } }
+) {
+  const data = updateInvoiceSchema.parse(await request.json());
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Fetch old invoice
+    const oldInv = await tx.invoice.findUnique({
+      where: { id },
+      include: { items: true },
     });
-    return NextResponse.json(list);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot fetch invoices" },
-      { status: 500 }
-    );
-  }
-}
+    if (!oldInv) throw new Error("Invoice không tồn tại");
 
-export async function POST(request: Request) {
-  try {
-    const json = await request.json();
-    const data = createInvoiceSchema.parse(json);
+    // 2. Delete old items
+    await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
 
+    // 3. Recalculate total and update
     const total = data.items.reduce(
       (sum, it) => sum + it.quantity * it.unitPrice,
       0
     );
-
-    const inv = await prisma.invoice.create({
+    const updated = await tx.invoice.update({
+      where: { id },
       data: {
-        customer: { connect: { id: data.customerId } },
-        date: new Date(data.date),
-        status: data.status || "UNPAID",
+        customerId: data.customerId,
+        date: data.date,
+        status: data.status,
         total,
         items: {
           create: data.items.map((it) => ({
-            drug: { connect: { id: it.drugId } },
+            drugId: it.drugId,
             quantity: it.quantity,
             unitPrice: it.unitPrice,
           })),
@@ -61,14 +57,18 @@ export async function POST(request: Request) {
       },
       include: { items: true },
     });
-    return NextResponse.json(inv, { status: 201 });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return NextResponse.json({ errors: err.errors }, { status: 400 });
+
+    // 4. Deduct stock when marking PAID (only once)
+    if (data.status === "PAID" && oldInv.status !== "PAID") {
+      await deductInventory(
+        tx,
+        updated.items.map((it) => ({
+          drugId: it.drugId,
+          quantity: it.quantity,
+        }))
+      );
     }
-    return NextResponse.json(
-      { error: "Cannot create invoice" },
-      { status: 500 }
-    );
-  }
+
+    return NextResponse.json(updated);
+  });
 }

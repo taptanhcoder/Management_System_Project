@@ -10,99 +10,76 @@ const updatePrescriptionSchema = z.object({
   status: z.enum(["PENDING", "CONFIRMED"]).optional(),
   medicines: z.array(
     z.object({
-      id: z.string().optional(), // nếu chỉnh sửa item cũ
       drugId: z.string(),
       quantity: z.number().int().positive(),
-      unitPrice: z.number().nonnegative(),
     })
   ),
 });
 
+// GET /api/prescriptions/:id
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params: { id } }: { params: { id: string } }
 ) {
-  const { id } = params;
-  try {
-    const pres = await prisma.prescription.findUnique({
+  const pres = await prisma.prescription.findUnique({
+    where: { id },
+    include: { items: true },
+  });
+  if (!pres) {
+    return NextResponse.json({ error: "Prescription not found" }, { status: 404 });
+  }
+  return NextResponse.json(pres);
+}
+
+// PUT /api/prescriptions/:id
+export async function PUT(
+  request: Request,
+  { params: { id } }: { params: { id: string } }
+) {
+  const json = await request.json();
+  const { customer, date, status, medicines } = updatePrescriptionSchema.parse(json);
+
+  return prisma.$transaction(async (tx) => {
+    const oldPres = await tx.prescription.findUnique({
       where: { id },
       include: { items: true },
     });
-    if (!pres) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    return NextResponse.json(pres);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot fetch prescription" },
-      { status: 500 }
-    );
-  }
-}
+    if (!oldPres) throw new Error("Prescription không tồn tại");
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
-  try {
-    const json = await request.json();
-    const data = updatePrescriptionSchema.parse(json);
+    // Xóa items cũ
+    await tx.prescriptionItem.deleteMany({ where: { prescriptionId: id } });
 
-    const total = data.medicines.reduce(
-      (sum, it) => sum + it.quantity * it.unitPrice,
-      0
+    // Tạo items mới
+    const itemsData = await Promise.all(
+      medicines.map(async (m) => {
+        const drug = await tx.drug.findUnique({ where: { id: m.drugId } });
+        if (!drug) throw new Error(`Drug ${m.drugId} not found`);
+        return {
+          drugId: m.drugId,
+          quantity: m.quantity,
+          unitPrice: drug.purchasePrice,
+        };
+      })
     );
 
-    // Xóa hết item cũ (cách đơn giản nhất)
-    await prisma.prescriptionItem.deleteMany({
-      where: { prescriptionId: id },
-    });
+    const total = itemsData.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
 
-    const updated = await prisma.prescription.update({
+    const updated = await tx.prescription.update({
       where: { id },
       data: {
-        customer: data.customer,
-        date: new Date(data.date),
-        status: data.status || undefined,
+        customer,
+        date: new Date(date),
+        status,
         total,
-        items: {
-          create: data.medicines.map((it) => ({
-            drug: { connect: { id: it.drugId } },
-            quantity: it.quantity,
-            unitPrice: it.unitPrice,
-          })),
-        },
+        items: { create: itemsData },
       },
       include: { items: true },
     });
-    return NextResponse.json(updated);
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return NextResponse.json({ errors: err.errors }, { status: 400 });
-    }
-    return NextResponse.json(
-      { error: "Cannot update prescription" },
-      { status: 500 }
-    );
-  }
-}
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
-  try {
-    await prisma.prescriptionItem.deleteMany({
-      where: { prescriptionId: id },
-    });
-    await prisma.prescription.delete({ where: { id } });
-    return NextResponse.json({ message: "Deleted" });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Cannot delete prescription" },
-      { status: 500 }
-    );
-  }
+    // NOTE: Không trừ kho tại đây nữa
+
+    return updated;
+  })
+  .then((pres) => NextResponse.json(pres))
+  .catch((err: any) => NextResponse.json({ error: err.message }, { status: 400 }));
 }

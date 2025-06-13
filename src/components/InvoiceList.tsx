@@ -1,91 +1,120 @@
 // src/components/InvoiceList.tsx
-import { prisma } from "@/lib/prisma";
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 
 interface InvoiceSummary {
   id: string;
-  date: Date;
+  date: string;
   total: number;
   status: "PAID" | "UNPAID";
-  customer: {
-    id: string;
-    name: string;
-  };
+  customer: { id: string; name: string };
 }
 
-export default async function InvoiceList() {
-  const invoices: InvoiceSummary[] = await prisma.invoice.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      customer: {
-        select: { id: true, name: true },
-      },
-    },
-  });
+export default function InvoiceList() {
+  const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
 
-  function formatDate(date: Date) {
-    const d = String(date.getDate()).padStart(2, "0");
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const y = date.getFullYear();
-    return `${d}/${m}/${y}`;
-  }
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/invoices?page=${page}&limit=${limit}`)
+      .then((r) => r.json())
+      .then(({ data, meta }) => {
+        setInvoices(data);
+        setTotalPages(Math.ceil(meta.total / limit));
+      })
+      .finally(() => setLoading(false));
+  }, [page]);
 
-  function formatCurrency(amount: number) {
-    return new Intl.NumberFormat("en-US", {
+  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("vi-VN");
+  const fmtCurr = (amt: number) =>
+    new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "USD",
-    }).format(amount);
-  }
+    }).format(amt);
+
+  if (loading) return <p className="p-6 text-white">Đang tải…</p>;
 
   return (
     <div className="px-6 py-8">
-      <h1 className="text-3xl font-bold text-white mb-6">Invoices</h1>
-      <div className="overflow-x-auto bg-gray-800 rounded-md">
-        <table className="w-full table-auto border-collapse text-gray-100">
-          <thead>
-            <tr className="bg-gray-700">
-              <th className="px-4 py-3 text-left">ID</th>
-              <th className="px-4 py-3 text-left">Customer</th>
-              <th className="px-4 py-3 text-left">Date</th>
-              <th className="px-4 py-3 text-left">Total</th>
-              <th className="px-4 py-3 text-left">Status</th>
+      <div className="flex justify-between mb-6">
+        <h1 className="text-3xl text-white font-bold">Invoices</h1>
+        <Link
+          href="/dashboard/invoices/new"
+          className="px-4 py-2 bg-green-600 text-white rounded"
+        >
+          + New Invoice
+        </Link>
+      </div>
+      <div className="overflow-auto bg-gray-800 rounded">
+        <table className="w-full text-gray-100">
+          <thead className="bg-gray-700">
+            <tr>
+              <th className="p-3 text-left">ID</th>
+              <th className="p-3 text-left">Customer</th>
+              <th className="p-3 text-left">Date</th>
+              <th className="p-3 text-left">Total</th>
+              <th className="p-3 text-left">Status</th>
+              <th className="p-3 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
             {invoices.map((inv) => (
-              <tr
-                key={inv.id}
-                className="border-b border-gray-700 hover:bg-gray-800"
-              >
-                <td className="px-4 py-3">{inv.id}</td>
-                <td className="px-4 py-3">{inv.customer.name}</td>
-                <td className="px-4 py-3">{formatDate(inv.date)}</td>
-                <td className="px-4 py-3">{formatCurrency(inv.total)}</td>
-                <td className="px-4 py-3">
-                  {inv.status === "PAID" ? (
-                    <span className="px-2 py-1 bg-green-500 text-white rounded-md">
-                      Paid
-                    </span>
-                  ) : (
-                    <span className="px-2 py-1 bg-red-500 text-white rounded-md">
-                      Unpaid
-                    </span>
-                  )}
+              <tr key={inv.id} className="border-b hover:bg-gray-800">
+                <td className="p-3">
+                  <Link
+                    href={`/dashboard/invoices/${inv.id}`}
+                    className="hover:underline"
+                  >
+                    {inv.id}
+                  </Link>
+                </td>
+                <td className="p-3">{inv.customer.name}</td>
+                <td className="p-3">{fmtDate(inv.date)}</td>
+                <td className="p-3">{fmtCurr(inv.total)}</td>
+                <td className="p-3">
+                  <span
+                    className={`px-2 py-1 rounded ${
+                      inv.status === "PAID" ? "bg-green-500" : "bg-red-500"
+                    } text-white`}
+                  >
+                    {inv.status}
+                  </span>
+                </td>
+                <td className="p-3">
+                  <Link
+                    href={`/dashboard/invoices/${inv.id}/edit`}
+                    className="text-blue-400 hover:underline"
+                  >
+                    Edit
+                  </Link>
                 </td>
               </tr>
             ))}
-
-            {invoices.length === 0 && (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-6 text-center text-gray-400"
-                >
-                  No invoices found.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4 flex justify-center text-white space-x-2">
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-3 py-1 bg-gray-700 rounded"
+        >
+          Prev
+        </button>
+        <span>
+          Page {page} / {totalPages}
+        </span>
+        <button
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page === totalPages}
+          className="px-3 py-1 bg-gray-700 rounded"
+        >
+          Next
+        </button>
       </div>
     </div>
   );
