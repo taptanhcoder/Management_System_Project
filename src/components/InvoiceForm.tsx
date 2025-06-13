@@ -1,354 +1,316 @@
 // src/components/InvoiceForm.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
-interface CustomerOption {
-  id: string;
-  name: string;
-}
-
-interface DrugOption {
-  id: string;
-  name: string;
-}
-
-interface ItemLine {
-  id?: string;
-  drugId: string;
-  quantity: number;
-  unitPrice: number;
-}
+interface Customer { id: string; name: string }
+interface Drug { id: string; name: string; sellingPrice: number }
+interface PrescriptionOption { id: string; customer: string }
+interface ItemLine { drugId: string; quantity: number; unitPrice: number }
 
 interface InvoiceFormProps {
   initialData?: {
     id: string;
     customerId: string;
-    date: string; // "YYYY-MM-DD"
+    date: string;
     status: "PAID" | "UNPAID";
-    items: { id: string; drugId: string; quantity: number; unitPrice: number }[];
+    items: ItemLine[];
   };
 }
 
 export default function InvoiceForm({ initialData }: InvoiceFormProps) {
   const router = useRouter();
+  const isEdit = Boolean(initialData);
 
-  // ─── State chính ─────────────────────────────────────────────────────
-  const [customerId, setCustomerId] = useState(initialData?.customerId || "");
-  const [date, setDate] = useState(initialData?.date || "");
+  const [prescriptionId, setPrescriptionId] = useState<string>("");
+  const [customerId, setCustomerId] = useState<string>(
+    initialData?.customerId || ""
+  );
+  const [date, setDate] = useState<string>(
+    initialData?.date || new Date().toISOString().slice(0, 10)
+  );
   const [status, setStatus] = useState<"PAID" | "UNPAID">(
     initialData?.status || "UNPAID"
   );
-
-  // Nếu có initialData, pre-fill items, ngược lại mặc định 1 dòng
   const [items, setItems] = useState<ItemLine[]>(
-    initialData
-      ? initialData.items.map((it) => ({
-          id: it.id,
+    initialData?.items.map((it) => ({ ...it })) || [
+      { drugId: "", quantity: 1, unitPrice: 0 },
+    ]
+  );
+
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [drugs, setDrugs] = useState<Drug[]>([]);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionOption[]>(
+    []
+  );
+
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Load options
+  useEffect(() => {
+    async function load() {
+      const [cusRes, drgRes, presRes] = await Promise.all([
+        fetch("/api/customers"),
+        fetch("/api/inventory"),
+        fetch("/api/prescriptions?status=PENDING"),
+      ]);
+      if (cusRes.ok) setCustomers(await cusRes.json());
+      if (drgRes.ok) {
+        const drs: any[] = await drgRes.json();
+        setDrugs(
+          drs.map((d) => ({
+            id: d.id,
+            name: d.name,
+            sellingPrice: d.sellingPrice,
+          }))
+        );
+      }
+      if (presRes.ok) {
+        const presList: any[] = await presRes.json();
+        setPrescriptions(
+          presList.map((p) => ({ id: p.id, customer: p.customer }))
+        );
+      }
+    }
+    load();
+  }, []);
+
+  // Nếu chọn prescription, populate lại
+  useEffect(() => {
+    if (!prescriptionId) return;
+    async function loadPres() {
+      const res = await fetch(`/api/prescriptions/${prescriptionId}`);
+      if (!res.ok) return;
+      const pres: any = await res.json();
+      setCustomerId(pres.customer);
+      setItems(
+        pres.items.map((it: any) => ({
           drugId: it.drugId,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
         }))
-      : [{ drugId: "", quantity: 1, unitPrice: 0 }]
-  );
-
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // ─── Dropdown data: customers + drugs ────────────────────────────────
-  const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([]);
-  const [drugOptions, setDrugOptions] = useState<DrugOption[]>([]);
-
-  useEffect(() => {
-    // Load danh sách customers
-    async function loadCustomers() {
-      try {
-        const res = await fetch("/api/customers");
-        if (res.ok) {
-          const data = await res.json();
-          // Mỗi customer: { id, name }
-          const opts = data.map((c: any) => ({ id: c.id, name: c.name }));
-          setCustomerOptions(opts);
-        }
-      } catch (err) {
-        console.error("Failed to load customers:", err);
-      }
+      );
     }
-    // Load danh sách drugs
-    async function loadDrugs() {
-      try {
-        const res = await fetch("/api/inventory"); // giả sử bạn có /api/inventory trả về list thuốc
-        if (res.ok) {
-          const data = await res.json();
-          const opts = data.map((d: any) => ({ id: d.id, name: d.name }));
-          setDrugOptions(opts);
-        }
-      } catch (err) {
-        console.error("Failed to load drugs:", err);
-      }
-    }
-    loadCustomers();
-    loadDrugs();
-  }, []);
+    loadPres();
+  }, [prescriptionId]);
 
-  // ─── Hàm để cập nhật từng dòng items ──────────────────────────────────
-  const updateItemLine = (
-    index: number,
-    field: "drugId" | "quantity" | "unitPrice",
-    value: string | number
+  const updateItem = (
+    idx: number,
+    field: keyof ItemLine,
+    value: string
   ) => {
-    setItems((prev) => {
-      const copy = [...prev];
-      if (field === "drugId") {
-        copy[index].drugId = value as string;
-      } else if (field === "quantity") {
-        copy[index].quantity = Number(value);
-      } else if (field === "unitPrice") {
-        copy[index].unitPrice = Number(value);
-      }
-      return copy;
-    });
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== idx) return item;
+        if (field === "drugId") {
+          const sel = drugs.find((d) => d.id === value);
+          return {
+            drugId: value,
+            quantity: item.quantity,
+            unitPrice: sel ? sel.sellingPrice : 0,
+          };
+        }
+        return { ...item, [field]: Number(value) };
+      })
+    );
   };
-
-  const addItemRow = () => {
+  const addItem = () =>
     setItems((prev) => [...prev, { drugId: "", quantity: 1, unitPrice: 0 }]);
-  };
+  const removeItem = (idx: number) =>
+    setItems((prev) => prev.filter((_, i) => i !== idx));
 
-  const removeItemRow = (index: number) => {
-    setItems((prev) => prev.filter((_, i) => i !== index));
-  };
+  const totalPreview = useMemo(
+    () => items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0),
+    [items]
+  );
+  const fmtCurr = (amt: number) =>
+    new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "USD",
+    }).format(amt);
 
-  // ─── Xử lý khi submit form ──────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!customerId || !date) {
-      setError("Please select a customer and date.");
-      return;
-    }
+    if (!date) return setError("Chọn ngày");
+    if (!isEdit && !prescriptionId && !customerId)
+      return setError("Chọn khách hoặc đơn thuốc");
+
+    // Validate items
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      if (!it.drugId) {
-        setError(`Line ${i + 1}: Please select a drug.`);
-        return;
-      }
-      if (it.quantity <= 0) {
-        setError(`Line ${i + 1}: Quantity must be at least 1.`);
-        return;
-      }
-      if (it.unitPrice < 0) {
-        setError(`Line ${i + 1}: Unit price cannot be negative.`);
-        return;
-      }
+      if (!it.drugId) return setError(`Dòng ${i + 1}: chọn thuốc`);
+      if (it.quantity < 1) return setError(`Dòng ${i + 1}: số lượng >=1`);
     }
-    setIsLoading(true);
 
-    // Chuẩn bị payload
-    const payload = {
-      customerId,
-      date,
-      status,
-      items: items.map((it) => ({
-        drugId: it.drugId,
-        quantity: it.quantity,
-        unitPrice: it.unitPrice,
-      })),
-    };
-
+    setLoading(true);
     try {
-      let res;
-      if (initialData && initialData.id) {
-        // PUT /api/invoices/[id]
-        res = await fetch(`/api/invoices/${initialData.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+      const payload: any = {
+        date,
+        status,
+        items,
+      };
+
+      if (prescriptionId) {
+        payload.prescriptionId = prescriptionId;
+        delete payload.items; // nếu muốn dùng prescription items
       } else {
-        // POST /api/invoices
-        res = await fetch("/api/invoices", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        payload.customerId = customerId;
       }
 
-      if (!res.ok) {
-        const data = await res.json();
-        setError(
-          data.errors
-            ? data.errors.map((err: any) => err.message).join(" ")
-            : data.error || "Failed to save invoice."
-        );
-        setIsLoading(false);
-        return;
-      }
+      const method = isEdit ? "PUT" : "POST";
+      const url = isEdit
+        ? `/api/invoices/${initialData!.id}`
+        : "/api/invoices";
 
-      const savedInvoice = await res.json();
-      setIsLoading(false);
-
-      if (initialData && initialData.id) {
-        router.push(`/dashboard/invoices/${initialData.id}`);
-      } else {
-        router.push("/dashboard/invoices");
-      }
-    } catch (err) {
-      console.error("Network error:", err);
-      setError("Network error. Please try again.");
-      setIsLoading(false);
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi server");
+      router.push("/dashboard/invoices");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 text-white">
-        {initialData ? "Edit Invoice" : "New Invoice"}
-      </h1>
+    <form
+      onSubmit={handleSubmit}
+      className="p-6 bg-gray-800 rounded text-white space-y-4"
+    >
+      <h2 className="text-2xl font-semibold">
+        {isEdit ? "Chỉnh sửa hóa đơn" : "Tạo hóa đơn"}
+      </h2>
+      {error && <div className="bg-red-600 p-2 rounded">{error}</div>}
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>
+      {!isEdit && (
+        <div>
+          <label>Đơn thuốc (nếu có)</label>
+          <select
+            value={prescriptionId}
+            onChange={(e) => setPrescriptionId(e.target.value)}
+            className="w-full p-2 bg-gray-700 rounded"
+          >
+            <option value="">-- Không dùng đơn --</option>
+            {prescriptions.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.id} – {p.customer}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Customer */}
+      {!prescriptionId && (
         <div>
-          <label className="block mb-1 text-gray-200">Customer</label>
+          <label>Khách hàng</label>
           <select
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
-            required
-            className="w-full px-3 py-2 border rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full p-2 bg-gray-700 rounded"
           >
-            <option value="">Select customer</option>
-            {customerOptions.map((c) => (
+            <option value="">-- Chọn --</option>
+            {customers.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
           </select>
         </div>
+      )}
 
-        {/* Date */}
-        <div>
-          <label className="block mb-1 text-gray-200">Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-            className="w-full px-3 py-2 border rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
+      <div>
+        <label>Ngày</label>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="w-full p-2 bg-gray-700 rounded"
+        />
+      </div>
 
-        {/* Status */}
-        <div>
-          <label className="block mb-1 text-gray-200">Status</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as any)}
-            className="w-full px-3 py-2 border rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="UNPAID">Unpaid</option>
-            <option value="PAID">Paid</option>
-          </select>
-        </div>
+      <div>
+        <label>Trạng thái</label>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as any)}
+          className="w-full p-2 bg-gray-700 rounded"
+        >
+          <option value="UNPAID">Chưa thanh toán</option>
+          <option value="PAID">Đã thanh toán</option>
+        </select>
+      </div>
 
-        {/* Items */}
-        <div className="border-t pt-4 space-y-4">
-          <h2 className="text-xl font-semibold mb-2 text-white">Items</h2>
-          {items.map((item, idx) => (
-            <div key={idx} className="flex items-end space-x-4">
-              {/* Drug */}
-              <div className="flex-1">
-                <label className="block mb-1 text-gray-200">Drug</label>
-                <select
-                  value={item.drugId}
-                  onChange={(e) =>
-                    updateItemLine(idx, "drugId", e.target.value)
-                  }
-                  required
-                  className="w-full px-3 py-2 border rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Select drug</option>
-                  {drugOptions.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+      <div>
+        <h3 className="font-medium">Items</h3>
+        {items.map((it, idx) => (
+          <div key={idx} className="flex space-x-2 mt-2">
+            <select
+              value={it.drugId}
+              onChange={(e) => updateItem(idx, "drugId", e.target.value)}
+              className="flex-1 p-2 bg-gray-700 rounded"
+            >
+              <option value="">-- Thuốc --</option>
+              {drugs.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min="1"
+              value={it.quantity}
+              onChange={(e) => updateItem(idx, "quantity", e.target.value)}
+              className="w-20 p-2 bg-gray-700 rounded"
+            />
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={it.unitPrice}
+              onChange={(e) => updateItem(idx, "unitPrice", e.target.value)}
+              className="w-28 p-2 bg-gray-700 rounded"
+            />
+            {items.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeItem(idx)}
+                className="px-2 text-red-500"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addItem}
+          className="mt-2 text-blue-400"
+        >
+          + Thêm dòng
+        </button>
+      </div>
 
-              {/* Quantity */}
-              <div className="w-24">
-                <label className="block mb-1 text-gray-200">Qty</label>
-                <input
-                  type="number"
-                  value={item.quantity}
-                  min={1}
-                  onChange={(e) =>
-                    updateItemLine(idx, "quantity", e.target.value)
-                  }
-                  required
-                  className="w-full px-3 py-2 border rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
+      <div className="text-right">
+        Tổng: <strong>{fmtCurr(totalPreview)}</strong>
+      </div>
 
-              {/* Unit Price */}
-              <div className="w-28">
-                <label className="block mb-1 text-gray-200">Unit Price</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={item.unitPrice}
-                  min={0}
-                  onChange={(e) =>
-                    updateItemLine(idx, "unitPrice", e.target.value)
-                  }
-                  required
-                  className="w-full px-3 py-2 border rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              {/* Remove row */}
-              {items.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeItemRow(idx)}
-                  className="text-red-600 hover:text-red-800 mb-1"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addItemRow}
-            className="text-blue-400 hover:underline"
-          >
-            + Add another item
-          </button>
-        </div>
-
-        {/* Submit */}
-        <div>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md"
-          >
-            {isLoading
-              ? initialData
-                ? "Saving..."
-                : "Creating..."
-              : initialData
-              ? "Save Changes"
-              : "Create Invoice"}
-          </button>
-        </div>
-      </form>
-    </div>
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full py-2 bg-green-600 rounded"
+      >
+        {loading ? (isEdit ? "Đang lưu..." : "Đang tạo...") : isEdit ? "Lưu" : "Tạo"}
+      </button>
+    </form>
   );
 }

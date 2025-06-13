@@ -1,44 +1,22 @@
 // src/app/dashboard/invoices/[id]/edit/page.tsx
-import { prisma } from "@/lib/prisma";
 import InvoiceForm from "@/components/InvoiceForm";
+import { prisma } from "@/lib/prisma";
 
-interface EditPageProps {
-  params: { id: string };
-}
-
-export default async function EditInvoicePage({ params }: EditPageProps) {
-  const { id } = params;
-
-  const invoice = await prisma.invoice.findUnique({
-    where: { id },
-    include: {
-      items: {
-        select: {
-          id: true,
-          drugId: true,
-          quantity: true,
-          unitPrice: true,
-        },
-      },
-    },
+export default async function EditInvoicePage({ params }: { params: { id: string } }) {
+  const inv = await prisma.invoice.findUnique({
+    where: { id: params.id },
+    include: { items: true },
   });
-
-  if (!invoice) {
-    return (
-      <div className="px-6 py-8 text-red-400">
-        Invoice with ID {id} not found.
-      </div>
-    );
+  if (!inv) {
+    return <p className="p-6 text-red-400">Invoice not found.</p>;
   }
 
-  // Chuẩn bị dữ liệu để pre-fill form
   const initialData = {
-    id: invoice.id,
-    customerId: invoice.customerId,
-    date: invoice.date.toISOString().slice(0, 10), // YYYY-MM-DD
-    status: invoice.status as "PAID" | "UNPAID",
-    items: invoice.items.map((it) => ({
-      id: it.id,
+    id: inv.id,
+    customerId: inv.customerId!,
+    date: inv.date.toISOString().slice(0, 10),
+    status: inv.status,
+    items: inv.items.map((it) => ({
       drugId: it.drugId,
       quantity: it.quantity,
       unitPrice: it.unitPrice,
